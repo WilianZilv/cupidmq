@@ -1,4 +1,4 @@
-"""Ring local — drop oldest quando cheio (cap só por bytes)."""
+"""Local ring — drop oldest when full (byte cap only)."""
 
 from __future__ import annotations
 

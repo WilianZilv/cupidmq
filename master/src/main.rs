@@ -8,7 +8,7 @@ use tracing::info;
 #[derive(Parser, Debug)]
 #[command(name = "cupidmq")]
 struct Args {
-    /// Arquivo de config (default: ./cupidmq.conf ou CUPIDMQ_CONFIG)
+    /// Config file (default: ./cupidmq.conf or CUPIDMQ_CONFIG)
     #[arg(long, env = "CUPIDMQ_CONFIG", default_value = "cupidmq.conf")]
     config: String,
 

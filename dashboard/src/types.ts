@@ -19,7 +19,7 @@ export interface ProducerRow {
   errors_per_sec: number;
   drops_per_sec: number;
   connected_secs: number;
-  /** ASGN em voo — consumer aguardando BATC. */
+  /** In-flight ASGN — consumer awaiting BATC. */
   assigned_consumer_id?: number | null;
 }
 
@@ -64,7 +64,7 @@ export interface HistoryPoint {
   transferPerSec: number;
   batchesPerSec: number;
   bytesPerSec: number;
-  /** bytes/s ÷ batch/s no intervalo do ponto. */
+  /** bytes/s ÷ batch/s over the point interval. */
   avgBatchBytes: number;
   deliveryFailuresPerSec: number;
   dropsPerSec: number;
@@ -98,7 +98,7 @@ export interface MetricsSnapshot {
   producers_ready: number;
   producers_busy: number;
   consumers_queued: number;
-  /** Σμ/λ — capacidade global do pool (pode divergir da média por consumer). */
+  /** Σμ/λ — global pool capacity (may differ from per-consumer average). */
   consumer_capacity_pct: number;
   producers: ProducerRow[];
   consumers: ConsumerRow[];
@@ -129,10 +129,10 @@ export interface SeriesDef {
   tip: string;
   axis?: "primary" | "secondary";
   legendHidden?: boolean;
-  /** Valor instantâneo pareado na legenda (ex.: bitrate ou tamanho médio do batch). */
+  /** Paired instantaneous value in the legend (e.g. bitrate or average batch size). */
   pairedKey?: HistorySeriesKey;
   pairedFormat?: "bitrate" | "bytes";
   pairedLabel?: string;
-  /** Bolinhas só contorno no gráfico match pool. */
+  /** Outline-only dots in the match pool chart. */
   hollow?: boolean;
 }

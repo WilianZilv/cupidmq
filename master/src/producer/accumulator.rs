@@ -1,7 +1,7 @@
 use bytes::Bytes;
 use std::time::{Duration, Instant};
 
-/// Acumula payloads por tamanho; flush por `max_bytes` ou timeout.
+/// Accumulates payloads by size; flush on `max_bytes` or timeout.
 pub struct BatchAccumulator {
     items: Vec<Bytes>,
     bytes: usize,
@@ -33,7 +33,7 @@ impl BatchAccumulator {
         self.items.len()
     }
 
-    /// Retorna batches prontos para envio (0–2: flush anterior + item oversized).
+    /// Returns batches ready to send (0–2: prior flush + oversized item).
     pub fn push(&mut self, item: Bytes) -> Vec<Vec<Bytes>> {
         let item_len = item.len();
         if item_len > self.max_bytes {

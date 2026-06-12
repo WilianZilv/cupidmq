@@ -45,7 +45,7 @@ const METRICS_URL =
 const TICKS_URL = `${metricsBaseUrl(METRICS_URL)}/metrics/ticks`;
 const HISTORY_URL = `${metricsBaseUrl(METRICS_URL)}/metrics/history`;
 export const POLL_MS = 2000;
-/** Ticks mais frequente que métricas — mantém fila cheia, sem pausa entre lotes. */
+/** Ticks polled more often than metrics — keeps queue full, no pause between batches. */
 export const TICK_POLL_MS = 500;
 
 const BACKLOG_SERIES: SeriesDef[] = [

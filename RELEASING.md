@@ -6,12 +6,13 @@ Branch: **`main`**. Consumption map: [README — Use in your project](README.md#
 
 | Artifact | Install from |
 |----------|----------------|
-| `cupidmq` / `cupidmq-producer` binaries | GitHub **Release** assets |
+| `cupidmq` / `cupidmq.exe` | GitHub **Release** — master binary |
+| `cupidmq.conf.example` | Same Release (once, from Linux job) |
 | `cupidmq_client-*.whl` | GitHub **Release** URL (`pip` / `uv`) |
-| `cupidmq-*.crate` | Attachment only — use **git tag** for `Cargo.toml` |
-| Rust library | **Git repo** — `tag`, `branch`, or `rev` |
+| Rust library | **Git repo** — `tag`, `branch`, or `rev` (not a Release URL) |
 | Python (rolling) | **Git repo** — `@main` + `subdirectory=python-client` |
 | Master Docker | **Git repo** — `docker build …#main` or `#v0.1.0` |
+| Load tool `cupidmq-producer` | **Not** in Release — `make build` / git examples |
 
 ## First publish (repo not on GitHub yet)
 
@@ -48,9 +49,9 @@ Replace the remote URL with your org/repo.
    ```
 
 5. [`.github/workflows/release.yml`](.github/workflows/release.yml) builds and uploads:
-   - Linux + Windows binaries + `cupidmq.conf.example`
-   - `cupidmq-0.1.0.crate`
-   - `cupidmq_client-0.1.0-py3-none-any.whl` + sdist
+   - `cupidmq` (Linux) + `cupidmq.exe` (Windows)
+   - `cupidmq.conf.example`
+   - `cupidmq_client-0.1.0-py3-none-any.whl`
 
 6. Verify on GitHub → **Releases** → assets list.
 
@@ -62,5 +63,5 @@ Normal. `v0.1.0`, `v0.1.1`, `v0.2.0` can all live on the same branch history. Co
 
 ```bash
 make publish          # binaries → dist/
-make publish-packages # wheel + .crate → dist/
+make publish-packages # wheel → dist/
 ```

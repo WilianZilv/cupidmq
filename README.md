@@ -228,7 +228,7 @@ No clone into your monorepo. Branch **`main`** on GitHub (`https://github.com/Wi
 
 | Piece | Source | Pin |
 |-------|--------|-----|
-| **Master binary** | **GitHub Release** | download `cupidmq` / `cupidmq-producer` |
+| **Master binary** | **GitHub Release** | download `cupidmq` / `cupidmq.exe` |
 | **Master Docker** | **Git repo** | `#main` or `#v0.1.0` |
 | **Rust crate** | **Git repo** | `branch` / `tag` / `rev` + `path = "master"` |
 | **Python lib** | **Git repo** *or* **Release wheel** | `@main` / `@v0.1.0` *or* `.whl` URL |
@@ -245,7 +245,7 @@ chmod +x cupidmq
 ./cupidmq --config cupidmq.conf.example
 ```
 
-Also on each Release: `cupidmq-producer`, `cupidmq.conf.example`.
+Also on each Release: `cupidmq.conf.example`. Load tool `cupidmq-producer` stays in the repo (`make build`), not in Release assets.
 
 ### Master Docker (git)
 
@@ -266,7 +266,7 @@ services:
 
 ### Rust crate (git + tags)
 
-Folder `master/` ≠ branch name. Cargo **cannot** `cargo add` a Release `.crate` URL — use **git**:
+Folder `master/` ≠ branch name. Use a **git dependency** (Cargo has no Release `.crate` URL):
 
 ```toml
 # fixed release (same commit as Release v0.1.0)
@@ -311,7 +311,7 @@ Package `cupidmq-client` · import `cupidmq` · Python ≥ 3.11.
 2. `make check-release TAG=v0.1.0`
 3. `git tag v0.1.0 && git push origin v0.1.0`
 
-→ [`.github/workflows/release.yml`](.github/workflows/release.yml) uploads binaries, `.crate`, wheel, sdist. Details: [RELEASING.md](RELEASING.md).
+→ [`.github/workflows/release.yml`](.github/workflows/release.yml) uploads master binaries, config example, and Python wheel. Details: [RELEASING.md](RELEASING.md).
 
 ---
 

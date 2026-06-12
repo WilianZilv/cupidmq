@@ -5,34 +5,34 @@ use bytes::{Bytes, BytesMut};
 use std::io::IoSlice;
 use tokio::io::AsyncWriteExt;
 
-/// Consumer → master: pede batch (max_items + tag).
+/// Consumer → master: requests batch (max_items + tag).
 pub const MAGIC_CONSUMER_READY: [u8; 4] = *b"CRDY";
 pub const MAGIC_PUB: [u8; 4] = *b"PUB!";
-/// Ingress batch — legado proxy; master não recebe payload.
+/// Ingress batch — legacy proxy; master does not receive payload.
 pub const MAGIC_PUB_BATCH: [u8; 4] = *b"PUBB";
 pub const MAGIC_BATCH: [u8; 4] = *b"BATC";
 pub const MAGIC_ERR: [u8; 4] = *b"ERR!";
-/// Producer → master: ring local tem itens.
+/// Producer → master: local ring has items.
 pub const MAGIC_PRODUCER_READY: [u8; 4] = *b"PRDY";
-/// Consumer → master (1º frame): endpoint dados TCP `host:port`.
+/// Consumer → master (1st frame): TCP data endpoint `host:port`.
 pub const MAGIC_REGISTER: [u8; 4] = *b"REG!";
-/// Master → producer: entrega pedido CRDY + destino dados TCP.
+/// Master → producer: delivers CRDY request + TCP data destination.
 pub const MAGIC_ASSIGN: [u8; 4] = *b"ASGN";
-/// Producer → master: batch TCP entregue.
+/// Producer → master: batch delivered over TCP.
 pub const MAGIC_DELIVERED: [u8; 4] = *b"DELV";
-/// Producer → master: entrega falhou (itens requeued localmente).
+/// Producer → master: delivery failed (items requeued locally).
 pub const MAGIC_FAILED: [u8; 4] = *b"FAIL";
 /// Producer → master: backlog local (ring + pending).
 pub const MAGIC_HEARTBEAT: [u8; 4] = *b"HBRP";
 
 pub const MAX_INGRESS_ITEM_BYTES: usize = 32 * 1024 * 1024;
-/// Frame PUBB completo (header + inner batch).
+/// Full PUBB frame (header + inner batch).
 pub const MAX_INGRESS_BATCH_FRAME_BYTES: usize = 64 * 1024 * 1024;
 
 pub const ERR_BUSY: u16 = 1;
 pub const ERR_PROTOCOL: u16 = 2;
 
-/// Batches acima disso: confiar em `write_vectored` sem `flush` extra.
+/// Batches above this: rely on `write_vectored` without extra `flush`.
 pub const FLUSH_BELOW_BYTES: usize = 64 * 1024;
 
 #[derive(Debug, Clone)]
@@ -46,7 +46,7 @@ pub struct ReadyRequest {
 pub struct AssignRequest {
     pub max_items: u16,
     pub consumer_tag: String,
-    /// Endpoint TCP data plane do consumer (`host:port` para BATC).
+    /// Consumer TCP data-plane endpoint (`host:port` for BATC).
     pub data_addr: String,
 }
 
@@ -77,7 +77,7 @@ fn inner_batch_payload_len(items: &[impl AsRef<[u8]>]) -> usize {
     2 + items.iter().map(|i| 4 + i.as_ref().len()).sum::<usize>()
 }
 
-/// Inner batch: `[count u16 LE][len u32 LE][item]…` (sem magic).
+/// Inner batch: `[count u16 LE][len u32 LE][item]…` (no magic).
 pub fn encode_batch_payload(items: &[impl AsRef<[u8]>]) -> Vec<u8> {
     let payload_len = inner_batch_payload_len(items);
     let mut payload = Vec::with_capacity(payload_len);
@@ -100,7 +100,7 @@ fn encode_framed_batch(magic: [u8; 4], items: &[impl AsRef<[u8]>]) -> Vec<u8> {
     frame
 }
 
-/// Monta frame BATC contíguo (tests / fallback).
+/// Builds contiguous BATC frame (tests / fallback).
 pub fn encode_batch(items: &[impl AsRef<[u8]>]) -> Vec<u8> {
     encode_framed_batch(MAGIC_BATCH, items)
 }
@@ -140,7 +140,7 @@ async fn write_framed_batch_vectored(
     Ok(10 + payload_len as u64)
 }
 
-/// Escreve BATC via write_vectored — evita memcpy do batch inteiro.
+/// Writes BATC via write_vectored — avoids memcpy of entire batch.
 pub async fn write_batch_vectored(
     writer: &mut (impl tokio::io::AsyncWrite + Unpin),
     items: &[impl AsRef<[u8]>],
@@ -148,7 +148,7 @@ pub async fn write_batch_vectored(
     write_framed_batch_vectored(writer, MAGIC_BATCH, items).await
 }
 
-/// Lê frame BATC completo; retorna inner payload (`[count u16][items…]`).
+/// Reads full BATC frame; returns inner payload (`[count u16][items…]`).
 pub async fn read_batch_frame(
     reader: &mut (impl tokio::io::AsyncRead + Unpin),
 ) -> Result<Vec<u8>> {
@@ -211,7 +211,7 @@ async fn read_utf8_field(
     Ok(String::from_utf8_lossy(&buf).into_owned())
 }
 
-/// Lê magic CRDY + header + tag num único fluxo (menos syscalls).
+/// Reads CRDY magic + header + tag in one flow (fewer syscalls).
 pub async fn read_consumer_ready_request(
     reader: &mut (impl tokio::io::AsyncRead + Unpin),
 ) -> Result<ReadyRequest> {
@@ -278,7 +278,7 @@ pub async fn read_pub_item(
     Ok(items.into_iter().next().unwrap())
 }
 
-/// Lê um frame ingress: `PUB!` (1 item) ou `PUBB` (N items, split no ring).
+/// Reads one ingress frame: `PUB!` (1 item) or `PUBB` (N items, split on ring).
 pub async fn read_ingress_items(
     reader: &mut (impl tokio::io::AsyncRead + Unpin),
 ) -> Result<Vec<Bytes>> {
@@ -325,7 +325,7 @@ async fn read_pub_batch_body(
     Ok(items)
 }
 
-/// Inner batch: `[count u16 LE][len u32 LE][item]…` — slices no buffer compartilhado (zero-copy).
+/// Inner batch: `[count u16 LE][len u32 LE][item]…` — slices in shared buffer (zero-copy).
 pub fn parse_batch_payload_items(payload: Bytes) -> Result<Vec<Bytes>> {
     let count = batch_item_count(&payload)?;
     let mut out = Vec::with_capacity(count);
@@ -353,12 +353,12 @@ pub fn parse_batch_payload_items(payload: Bytes) -> Result<Vec<Bytes>> {
     Ok(out)
 }
 
-/// Monta frame PUBB contíguo (tests / legado ingress).
+/// Builds contiguous PUBB frame (tests / legacy ingress).
 pub fn encode_pub_batch(items: &[impl AsRef<[u8]>]) -> Vec<u8> {
     encode_framed_batch(MAGIC_PUB_BATCH, items)
 }
 
-/// Escreve PUBB via write_vectored — 1 TCP flush para muitos items.
+/// Writes PUBB via write_vectored — 1 TCP flush for many items.
 pub async fn write_pub_batch_vectored(
     writer: &mut (impl tokio::io::AsyncWrite + Unpin),
     items: &[impl AsRef<[u8]>],
@@ -419,7 +419,7 @@ pub async fn read_register(
     read_register_payload(reader).await
 }
 
-/// Corpo de `REG!` após os 4 bytes de magic já consumidos.
+/// `REG!` body after the 4 magic bytes already consumed.
 pub async fn read_register_payload(
     reader: &mut (impl tokio::io::AsyncRead + Unpin),
 ) -> Result<String> {
@@ -606,7 +606,7 @@ pub async fn read_failed(
     read_failure_report_payload(reader).await
 }
 
-/// TCP baixa latência + keepalive — detecta master morto sem esperar batch_timeout.
+/// Low-latency TCP + keepalive — detects dead master without waiting for batch_timeout.
 pub fn tune_tcp(stream: &tokio::net::TcpStream) {
     let _ = stream.set_nodelay(true);
     let keepalive = socket2::TcpKeepalive::new()

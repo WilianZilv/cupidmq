@@ -14,7 +14,7 @@ pub struct PushResult {
     pub accepted: bool,
 }
 
-/// Fila byte-capped com drop oldest — base do ring do server e do producer.
+/// Byte-capped queue with drop-oldest — base of server and producer rings.
 pub struct ByteRing {
     queue: VecDeque<RingEntry>,
     bytes: usize,
@@ -51,7 +51,7 @@ impl ByteRing {
             .unwrap_or(0)
     }
 
-    /// Push back; drop oldest até caber.
+    /// Push back; drop oldest until it fits.
     pub fn push(&mut self, payload: Bytes, enqueued_ms: u64) -> PushResult {
         if payload.is_empty() {
             return PushResult {
@@ -109,7 +109,7 @@ impl ByteRing {
         out
     }
 
-    /// Requeue no head; drop newest (back) se estourar cap de bytes.
+    /// Requeue at head; drop newest (back) if byte cap exceeded.
     pub fn push_front(&mut self, msg: QueuedMessage) -> u32 {
         let len = msg.payload.len();
         self.bytes = self.bytes.saturating_add(len);

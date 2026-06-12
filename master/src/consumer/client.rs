@@ -19,13 +19,13 @@ pub const DEFAULT_PREFETCH_BATCH_COUNT: usize = 4;
 pub const DEFAULT_BATCH_TIMEOUT_SECS: u64 = 10;
 pub const DEFAULT_DATA_IDLE_SECS: u64 = 60;
 pub const DEFAULT_RECONNECT_DELAY_SECS: u64 = 2;
-/// Retry enquanto master reinicia — espelha producer (~50ms loop).
+/// Retry while master restarts — mirrors producer (~50ms loop).
 const CONNECT_RETRY_MS: u64 = 100;
 
 #[derive(Debug, Clone)]
 pub struct ConsumerConfig {
     pub master: String,
-    /// Endereço anunciado no REG! (produtor conecta aqui).
+    /// Address advertised in REG! (producer connects here).
     pub data_addr: String,
     /// BATC bind local — default `0.0.0.0:port` (port from `data_addr`); override when needed.
     pub bind_addr: Option<String>,
@@ -39,7 +39,7 @@ pub struct ConsumerConfig {
 }
 
 impl ConsumerConfig {
-    /// `data_addr` obrigatório `host:port` — porta BATC explícita, sem default.
+    /// `data_addr` required `host:port` — explicit BATC port, no default.
     pub fn new(master: impl Into<String>, data_addr: impl Into<String>) -> Result<Self> {
         let master = master.into();
         let data_addr = data_addr.into();
@@ -106,7 +106,7 @@ impl ConsumerConfig {
         self
     }
 
-    /// Socket BATC local — `bind_addr` ou `0.0.0.0:<porta de data_addr>`.
+    /// Local BATC socket — `bind_addr` or `0.0.0.0:<port from data_addr>`.
     pub fn resolve_bind(&self) -> Result<(String, u16)> {
         if let Some(bind) = self.bind_addr.as_deref() {
             return parse_host_port(bind);
@@ -126,7 +126,7 @@ pub struct ConsumerStats {
     pub stale_batches: AtomicU64,
 }
 
-/// `asyncio.Event` — mesmo contrato do Python (`set` / `clear` / `wait`).
+/// `asyncio.Event` — same contract as Python (`set` / `clear` / `wait`).
 struct EventGate {
     raised: AtomicBool,
     notify: Notify,
@@ -221,7 +221,7 @@ fn parse_master_addr(addr: &str) -> Result<(String, u16)> {
     })
 }
 
-/// Cliente consumer — [`consume`](Self::consume) itera batches; background cuida de REG!/CRDY/BATC.
+/// Consumer client — [`consume`](Self::consume) iterates batches; background handles REG!/CRDY/BATC.
 pub struct Consumer {
     rx: mpsc::Receiver<Option<Vec<Bytes>>>,
     prefetch: Arc<EventGate>,
@@ -272,7 +272,7 @@ impl Consumer {
         &self.stats
     }
 
-    /// Itera batches — após cada handler, libera próximo CRDY (igual Python `consume()`).
+    /// Iterates batches — after each handler, releases next CRDY (same as Python `consume()`).
     pub async fn consume<F, Fut>(&mut self, mut handler: F) -> Result<()>
     where
         F: FnMut(Vec<Bytes>) -> Fut,
@@ -332,7 +332,7 @@ async fn run_data_plane(shared: Arc<Shared>) {
     }
 }
 
-/// Uma task por conexão BATC — igual `asyncio.start_server` no Python.
+/// One task per BATC connection — same as Python `asyncio.start_server`.
 async fn serve_data_connection(shared: Arc<Shared>, mut stream: TcpStream) {
     tune_tcp(&stream);
     let idle = Duration::from_secs(shared.config.data_idle_secs);
@@ -445,7 +445,7 @@ async fn run_control_plane(shared: Arc<Shared>) {
     let _ = shared.out_tx.send(None).await;
 }
 
-/// Espelha `ConsumerRuntime._session` / `fetch_loop` em `_consumer.py`.
+/// Mirrors `ConsumerRuntime._session` / `fetch_loop` in `_consumer.py`.
 async fn run_control_session(
     shared: Arc<Shared>,
     mut stream: OwnedWriteHalf,
@@ -512,7 +512,7 @@ async fn run_control_session(
             .msgs_in
             .fetch_add(batch.len() as u64, Ordering::Relaxed);
 
-        // Bloqueia com fila cheia — próximo CRDY só após `consume()` → prefetch.set()
+        // Blocks when queue full — next CRDY only after `consume()` → prefetch.set()
         if shared.out_tx.send(Some(batch)).await.is_err() {
             break;
         }

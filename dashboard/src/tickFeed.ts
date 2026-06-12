@@ -2,8 +2,8 @@ import { normalizeTick } from "./tickNormalize";
 import type { TransferTick } from "./types";
 
 /**
- * Consulta `/metrics/ticks` — normaliza e devolve o lote.
- * Sem playback, sem rotas, sem histórico: só leitura.
+ * Fetches `/metrics/ticks` — normalizes and returns the batch.
+ * No playback, routes, or history: read-only.
  */
 export async function fetchTickBatch(
   ticksUrl: string,

@@ -8,6 +8,11 @@
 #     --scale producer=8 --scale consumer-rust=8 --scale consumer-python=8
 #
 # BATC ports: flock volume → 9760, 9761, … (consumers share one counter).
+#
+# Stop (from repo root): make docker-down
+# Stop (from this dir):  docker compose --env-file .env down -v
+
+name: cupidmq
 
 services:
   master:

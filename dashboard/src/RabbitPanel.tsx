@@ -123,9 +123,9 @@ interface PanelProps {
   rateMode?: boolean;
   byteRateMode?: boolean;
   durationMode?: boolean;
-  /** msg/s à esquerda, bytes/s à direita no gráfico + legenda pareada. */
+  /** msg/s on the left, bytes/s on the right in the chart + paired legend. */
   dualByteAxis?: boolean;
-  /** drops/s (ou outra taxa) no eixo Y direito. */
+  /** drops/s (or other rate) on the right Y axis. */
   dualRateAxis?: boolean;
 }
 
@@ -619,14 +619,14 @@ export function ringFillPct(metrics: {
   return Math.max(bytePct, msgPct);
 }
 
-/** ≤5% verde, meio amarelo, quase cheio vermelho. */
+/** ≤5% green, middle yellow, nearly full red. */
 export function ringFillClass(pct: number): string {
   if (!Number.isFinite(pct) || pct <= 5) return "ring-ok";
   if (pct >= 85) return "ring-full";
   return "ring-warn";
 }
 
-/** bytes/s → Gbps / Mbps (decimal, padrão rede). */
+/** bytes/s → Gbps / Mbps (decimal, network standard). */
 export function formatNetworkBitrate(bytesPerSec: number): string {
   if (!Number.isFinite(bytesPerSec) || bytesPerSec <= 0) return "0 Mbps";
   const bps = bytesPerSec * 8;
@@ -644,7 +644,7 @@ export function formatNetworkBitrate(bytesPerSec: number): string {
   return `${Math.round(bps)} bps`;
 }
 
-/** Eixo Y compacto — mesma escala, sufixo curto. */
+/** Compact Y axis — same scale, short suffix. */
 export function formatNetworkBitrateAxis(bytesPerSec: number): string {
   if (!Number.isFinite(bytesPerSec) || bytesPerSec <= 0) return "0";
   const bps = bytesPerSec * 8;

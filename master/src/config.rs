@@ -1,4 +1,4 @@
-//! Configuração runtime via `cupidmq.conf` (key=value).
+//! Runtime configuration via `cupidmq.conf` (key=value).
 
 use anyhow::{Context, Result};
 use std::collections::HashMap;
@@ -72,7 +72,7 @@ pub fn parse_conf_text(raw: &str) -> HashMap<String, String> {
     out
 }
 
-/// Aceita bytes inteiros ou sufixos: kb, mb, gb (e k/m/g).
+/// Accepts plain bytes or suffixes: kb, mb, gb (and k/m/g).
 pub fn parse_size(raw: &str) -> Option<u64> {
     let s = raw.trim().to_ascii_lowercase().replace('_', "");
     if s.is_empty() {

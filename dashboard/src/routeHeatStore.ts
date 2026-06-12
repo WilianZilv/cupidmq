@@ -78,7 +78,7 @@ export function getActiveRoutesSnapshot(now = Date.now()): readonly ActiveRouteT
   return routesSnapshot.filter((r) => now < r.visibleUntil);
 }
 
-/** Opacidade 1→0 linear em [shownAtMs, visibleUntil]. */
+/** Opacity 1→0 linear over [shownAtMs, visibleUntil]. */
 export function routeFadeAlpha(route: ActiveRouteTick, now: number): number {
   if (now >= route.visibleUntil) return 0;
   const span = route.visibleUntil - route.shownAtMs;
@@ -138,7 +138,7 @@ export function applyRouteTicks(
   emit();
 }
 
-/** Prune sem notificar listeners — hot path do canvas rAF. */
+/** Prune without notifying listeners — canvas rAF hot path. */
 export function pruneExpiredRoutesQuiet(now = Date.now()): boolean {
   const before = activeRoutes.size;
   for (const [key, route] of activeRoutes) {

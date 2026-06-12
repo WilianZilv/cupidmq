@@ -3,11 +3,11 @@ import { consumerNodeId, producerNodeId } from "./flowGraphModel";
 export type NodeStateOverlay = {
   state: string;
   lastTs: number;
-  /** Master fez match — anel roxo nos nodes. */
+  /** Master matched — purple ring on nodes. */
   assign?: boolean;
 };
 
-/** Estado pós-deliver até próximo tick no node. */
+/** Post-deliver state until the next tick on the node. */
 export const NODE_STATE_OVERLAY_MS = 2500;
 
 function overlayTtl(_overlay: NodeStateOverlay): number {
@@ -92,7 +92,7 @@ export function markNodeStatesFromTick(tick: TransferTick): void {
   emit();
 }
 
-/** Acumula overlays — assign no node até deliver/fail do mesmo tick. */
+/** Accumulates overlays — assign on node until deliver/fail of the same tick. */
 export function mergeNodeStatesFromTicks(ticks: TransferTick[]): void {
   if (ticks.length === 0) return;
   const ts = Date.now();
@@ -108,7 +108,7 @@ export function clearNodeStateOverlays(): void {
   emit();
 }
 
-/** Estado do node no flow — só overlay de tick; sem fallback de métricas. */
+/** Node state in the flow — tick overlay only; no metrics fallback. */
 export function resolveNodeState(
   nodeId: string,
   overlayMap: ReadonlyMap<string, NodeStateOverlay>,

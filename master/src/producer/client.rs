@@ -108,9 +108,9 @@ pub struct ProducerStats {
 
 struct Inner {
     config: ProducerConfig,
-    /// Ingress — `publish_batch` enfileira aqui.
+    /// Ingress — `publish_batch` enqueues here.
     pending: ByteRing,
-    /// Pronto para ASSIGN — só recebe após accumulator flush.
+    /// Ready for ASSIGN — only receives after accumulator flush.
     ring: ByteRing,
     accumulator: BatchAccumulator,
     link_state: LinkState,
@@ -118,7 +118,7 @@ struct Inner {
     last_connect_fail: Option<Instant>,
 }
 
-/// Cliente master — pending→accumulator→ring, PRDY/ASGN, TCP BATC → consumer.
+/// Master client — pending→accumulator→ring, PRDY/ASGN, TCP BATC → consumer.
 pub struct Producer {
     inner: Arc<Mutex<Inner>>,
     delivery_pool: Arc<AsyncMutex<DeliveryPool>>,
@@ -205,7 +205,7 @@ fn push_batch_to_ring(ring: &mut ByteRing, batch: &[Bytes]) {
     }
 }
 
-/// pending + accumulator → ring. ASGN só drena ring; sem isso backlog só em pending vira DELV 0.
+/// pending + accumulator → ring. ASGN only drains ring; otherwise backlog stuck in pending yields DELV 0.
 fn flush_ingress_to_ring(st: &mut Inner) {
     while let Some(msg) = st.pending.pop_front() {
         for batch in st.accumulator.push(msg.payload) {
@@ -494,7 +494,7 @@ async fn tcp_deliver_batch_once(stream: &mut TcpStream, items: &[&Bytes]) -> Res
     Ok(())
 }
 
-/// Drena ring respeitando `max_items` e `max_batch_bytes`.
+/// Drains ring respecting `max_items` and `max_batch_bytes`.
 fn drain_for_assign(
     ring: &mut ByteRing,
     max_items: usize,

@@ -1,8 +1,8 @@
-//! Consumer capacity — ciclo CRDY → batch → process → CRDY.
+//! Consumer capacity — CRDY → batch → process → CRDY cycle.
 //!
-//! μ observado = EMA(itens/batch) ÷ EMA(ciclo ms)
-//! λ demanda = (transfer/s + max(0, Δbacklog/s)) ÷ N
-//! capacity = μ/λ × 100 (>100 = headroom; <100 = atrasado)
+//! observed μ = EMA(items/batch) ÷ EMA(cycle ms)
+//! demand λ = (transfer/s + max(0, Δbacklog/s)) ÷ N
+//! capacity = μ/λ × 100 (>100 = headroom; <100 = behind)
 
 use crate::consumers::ConsumerRow;
 
@@ -15,14 +15,14 @@ pub struct ConsumerCapacityInput {
 const DEFAULT_CYCLE_MS: f64 = 256.0;
 const DEFAULT_BATCH_ITEMS: f64 = 32.0;
 
-/// Throughput observado (msg/s) a partir do ciclo real do consumer.
+/// Observed throughput (msg/s) from consumer's real cycle.
 pub fn observed_throughput(batch_items: f64, cycle_ms: f64) -> f64 {
     let items = batch_items.max(0.1);
     let tau = (cycle_ms / 1000.0).max(0.001);
     items / tau
 }
 
-/// Demanda de ingestão = drenagem atual + crescimento do backlog producer.
+/// Ingest demand = current drain rate + producer backlog growth.
 pub fn demand_per_sec(transfer_per_sec: f64, backlog_growth_per_sec: f64) -> f64 {
     if transfer_per_sec <= 0.01 && backlog_growth_per_sec <= 0.01 {
         return 0.0;
@@ -30,7 +30,7 @@ pub fn demand_per_sec(transfer_per_sec: f64, backlog_growth_per_sec: f64) -> f64
     transfer_per_sec + backlog_growth_per_sec.max(0.0)
 }
 
-/// Capacity de um consumer vs cota justa da demanda total.
+/// Consumer capacity vs fair share of total demand.
 pub fn per_consumer_capacity_model(
     batch_items: f64,
     cycle_ms: f64,
@@ -48,7 +48,7 @@ pub fn per_consumer_capacity_model(
     (mu / lambda * 100.0).max(0.0)
 }
 
-/// Capacity global = soma dos μ vs demanda total.
+/// Global capacity = sum of μ vs total demand.
 pub fn global_capacity_model(inputs: &[ConsumerCapacityInput], demand_per_sec: f64) -> f64 {
     let n = inputs.len();
     if n == 0 {
@@ -64,7 +64,7 @@ pub fn global_capacity_model(inputs: &[ConsumerCapacityInput], demand_per_sec: f
     (total_mu / demand_per_sec * 100.0).max(0.0)
 }
 
-/// Fallback quando não há taxa de publish recente.
+/// Fallback when no recent publish rate.
 pub fn compute_consumer_capacity_fallback(consumers: &[ConsumerRow], ready: u64) -> f64 {
     let n = consumers.len();
     if n == 0 {
@@ -127,7 +127,7 @@ mod tests {
 
     #[test]
     fn partial_batches_fall_behind() {
-        // batch real ~8, ciclo 280ms → μ≈28.6; demand 553/s ÷ 9 ≈ 61.4
+        // actual batch ~8, cycle 280ms → μ≈28.6; demand 553/s ÷ 9 ≈ 61.4
         let cap = per_consumer_capacity_model(8.0, 280.0, 553.0, 9);
         assert!(cap > 40.0 && cap < 55.0, "cap={cap}");
     }

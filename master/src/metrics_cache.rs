@@ -4,7 +4,7 @@ use tokio::sync::RwLock;
 
 use crate::metrics::MetricsSnapshot;
 
-/// Snapshot compartilhado — sampler escreve, GET /metrics lê sem rebuild.
+/// Shared snapshot — sampler writes, GET /metrics reads without rebuild.
 pub struct MetricsCache {
     snap: RwLock<Option<Arc<MetricsSnapshot>>>,
 }

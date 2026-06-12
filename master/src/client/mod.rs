@@ -30,7 +30,7 @@ impl CupidMQ {
         }
     }
 
-    /// Processa batches — CRDY seguinte só após o handler (igual Python `consume()`).
+    /// Processes batches — next CRDY only after handler (same as Python `consume()`).
     pub async fn consume<F, Fut>(&mut self, handler: F) -> Result<()>
     where
         F: FnMut(Vec<Bytes>) -> Fut,

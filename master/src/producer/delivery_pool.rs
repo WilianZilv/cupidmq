@@ -1,4 +1,4 @@
-//! Pool keep-alive por `host:port` — uma conexão BATC TCP viva por destino.
+//! Keep-alive pool by `host:port` — one live BATC TCP connection per destination.
 
 use anyhow::Result;
 use std::collections::HashMap;
@@ -17,7 +17,7 @@ struct PooledConn {
     idle_since: Instant,
 }
 
-/// Uma conexão BATC viva por destino (TCP keep-alive por host:port).
+/// One live BATC connection per destination (TCP keep-alive by host:port).
 pub struct DeliveryPool {
     conns: HashMap<String, PooledConn>,
     idle_timeout: Duration,
@@ -39,12 +39,12 @@ impl DeliveryPool {
         self.conns.retain(|_, c| c.idle_since.elapsed() < self.idle_timeout);
     }
 
-    /// Remove conexão inválida (I/O error no BATC).
+    /// Removes invalid connection (BATC I/O error).
     pub fn invalidate(&mut self, addr: &str) {
         self.conns.remove(addr);
     }
 
-    /// Tira conexão do pool ou `None` se expirada/ausente.
+    /// Takes connection from pool or `None` if expired/absent.
     pub fn take(&mut self, addr: &str) -> Option<TcpStream> {
         self.evict_stale();
         let Some(entry) = self.conns.remove(addr) else {
@@ -56,7 +56,7 @@ impl DeliveryPool {
         Some(entry.stream)
     }
 
-    /// Devolve conexão viva ao pool (substitui anterior).
+    /// Returns live connection to pool (replaces previous).
     pub fn put(&mut self, addr: impl Into<String>, stream: TcpStream) {
         self.evict_stale();
         self.conns.insert(

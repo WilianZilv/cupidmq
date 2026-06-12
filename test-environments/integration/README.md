@@ -10,7 +10,30 @@ Multi-replica Compose stack for end-to-end BATC/TCP tests — **not** production
 
 ```bash
 cp test-environments/integration/.env.example test-environments/integration/.env
-make docker-up
+make docker-up    # from repo root
+```
+
+**Stop everything** (must use the same project + compose file as `make docker-up`):
+
+```bash
+# repo root — preferred
+make docker-down
+
+# or explicit
+docker compose -f test-environments/integration/docker-compose.yml \
+  --env-file test-environments/integration/.env down -v
+
+# from test-environments/integration/ (project name is cupidmq in compose file)
+docker compose --env-file .env down -v
+```
+
+`docker compose down` alone in this folder **used to fail** (wrong project name `integration` vs `cupidmq`). The compose file now sets `name: cupidmq`.
+
+Emergency if compose still mismatches:
+
+```bash
+docker stop $(docker ps -q --filter name=cupidmq-)
+docker rm $(docker ps -aq --filter name=cupidmq-)
 ```
 
 Dashboard (baked into master): `http://127.0.0.1:9752/`

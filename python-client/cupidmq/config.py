@@ -1,4 +1,4 @@
-"""Configuração do Client cupidmq."""
+"""CupidMQ client configuration."""
 
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ def parse_master(master: str, default_port: int) -> tuple[str, int]:
 class ConsumerConfig:
     master: str = "127.0.0.1:9750"
     data_addr: str = "127.0.0.1:9760"
-    """Endereço anunciado no REG! (produtor conecta aqui). Bind local: `0.0.0.0:port` (porta de `data_addr`)."""
+    """Address advertised in REG! (producer connects here). Local bind: `0.0.0.0:port` (port from `data_addr`)."""
     bind_addr: str | None = None
     consumer_tag: str = ""
     max_batch_size_count: int = 32

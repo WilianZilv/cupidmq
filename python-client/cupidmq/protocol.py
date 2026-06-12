@@ -1,4 +1,4 @@
-"""Split inner batch BATC — só bytes, sem decode de domínio."""
+"""Split inner BATC batch — bytes only, no domain decode."""
 
 from __future__ import annotations
 

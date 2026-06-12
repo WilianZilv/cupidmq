@@ -205,7 +205,7 @@ async fn run_history_sampler(state: RelayState, interval_ms: u64) {
     }
 }
 
-/// Matcher extra — não depender só de PRDY/CRDY/HBRP + sampler 2s.
+/// Extra matcher — do not rely only on PRDY/CRDY/HBRP + 2s sampler.
 async fn run_match_loop(state: RelayState) {
     let mut ticker = tokio::time::interval(Duration::from_millis(250));
     ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);

@@ -1,4 +1,4 @@
-"""Métricas do Client."""
+"""Client metrics."""
 
 from __future__ import annotations
 

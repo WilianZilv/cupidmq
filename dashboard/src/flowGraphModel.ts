@@ -43,7 +43,7 @@ export function consumerAnchor(
   };
 }
 
-/** Centro da bolinha out — layout fixo (sem React Flow). */
+/** Center of the out handle dot — fixed layout (no React Flow). */
 export function producerHandleCenter(
   producerId: number,
   producers: MetricsSnapshot["producers"],
@@ -56,7 +56,7 @@ export function producerHandleCenter(
   };
 }
 
-/** Centro da bolinha in — layout fixo (sem React Flow). */
+/** Center of the in handle dot — fixed layout (no React Flow). */
 export function consumerHandleCenter(
   consumerId: number,
   consumers: MetricsSnapshot["consumers"],
@@ -87,7 +87,7 @@ export type AssignmentLink = {
   consumerId: number;
 };
 
-/** Linha roxa P→C — só o ASGN ativo (producer busy). */
+/** Purple P→C line — active ASGN only (producer busy). */
 export function collectAssignmentLinks(
   metrics: MetricsSnapshot,
 ): AssignmentLink[] {
@@ -104,7 +104,7 @@ export function collectAssignmentLinks(
   return out;
 }
 
-/** Evita tick de ciclo anterior enquanto producer busy com outro consumer. */
+/** Skips tick from previous cycle while producer is busy with another consumer. */
 export function routeMatchesActiveAssignment(
   route: { producerKey: string; consumerKey: string; phase?: string },
   metrics: MetricsSnapshot,
@@ -165,7 +165,7 @@ function edgeFromActiveTick(
   };
 }
 
-/** Pulse nos 2 nodes do tick — cor conforme fase (assign vs transfer). */
+/** Pulse on both tick nodes — color by phase (assign vs transfer). */
 export function pulseFromRoute(
   route: ActiveRouteTick | null,
   now: number,
@@ -190,7 +190,7 @@ export function pulseIdsFromRoute(
   return pulseFromRoute(route, now)?.ids ?? new Set();
 }
 
-/** Pulse nos nodes — só rotas vindas de ticks. */
+/** Pulse on nodes — routes from ticks only. */
 export function resolveNodePulseMap(
   routes: readonly ActiveRouteTick[],
   now: number,
@@ -254,7 +254,7 @@ export function buildFlowNodes(
   return nodes;
 }
 
-/** No máximo 1 aresta — tick atual P→C. */
+/** At most 1 edge — current tick P→C. */
 export function buildFlowEdges(
   metrics: MetricsSnapshot,
   route: ActiveRouteTick | null,

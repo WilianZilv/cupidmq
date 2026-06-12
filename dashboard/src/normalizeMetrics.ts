@@ -39,7 +39,7 @@ export function normalizeMetrics(raw: Record<string, unknown>): MetricsSnapshot 
   };
 }
 
-/** Média aritmética de capacity_pct na tabela (resumo do header). */
+/** Arithmetic mean of capacity_pct in the table (header summary). */
 export function avgConsumerCapacityPct(consumers: ConsumerRow[]): number | null {
   if (consumers.length === 0) return null;
   const sum = consumers.reduce((s, c) => s + c.capacity_pct, 0);

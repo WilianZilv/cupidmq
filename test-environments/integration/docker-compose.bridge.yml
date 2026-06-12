@@ -1,6 +1,10 @@
 # Integration test fallback — bridge network (Docker Desktop Win/Mac).
 # No Docker DNS between clients — traffic via host-gateway.
 # Four explicit consumers (replicas cannot map unique host ports on bridge).
+#
+# Stop: docker compose -f docker-compose.bridge.yml down -v
+
+name: cupidmq
 
 x-consumer: &consumer
   build:

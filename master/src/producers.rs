@@ -29,7 +29,7 @@ pub struct ProducerRow {
     pub errors_per_sec: f64,
     pub drops_per_sec: f64,
     pub connected_secs: u64,
-    /// Consumer do ASGN em voo (busy → BATC pendente).
+    /// Consumer of in-flight ASGN (busy → BATC pending).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub assigned_consumer_id: Option<u64>,
 }
@@ -82,15 +82,15 @@ struct ProducerEntry {
     errors_per_sec: f64,
     drops_per_sec: f64,
     pending_consumer_id: Option<u64>,
-    /// Unix ms — ASGN enviado; detecta busy fantasma (DELV/FAIL perdido).
+    /// Unix ms — ASGN sent; detects ghost busy (lost DELV/FAIL).
     busy_since_ms: u64,
-    /// PRDY recebido; ring pode ainda não refletir no heartbeat.
+    /// PRDY received; ring may not yet reflect in heartbeat.
     prdy_pending: bool,
     write: Mutex<OwnedWriteHalf>,
 }
 
 
-/// Após ASGN: producer bloqueado em deliver; HBRP com backlog ou timeout libera busy.
+/// After ASGN: producer blocked in deliver; HBRP with backlog or timeout releases busy.
 const STALE_BUSY_MS: u64 = 15_000;
 
 pub struct ProducerRegistry {
@@ -216,7 +216,7 @@ impl ProducerRegistry {
             .map(|e| e.state)
     }
 
-    /// Elegível para match — só ring (+ PRDY). Pending ainda no accumulator não é drenável no ASGN.
+    /// Match-eligible — ring only (+ PRDY). Pending still in accumulator is not drainable on ASGN.
     #[inline]
     fn entry_has_backlog(e: &ProducerEntry) -> bool {
         e.prdy_pending || e.ring_messages > 0
@@ -240,7 +240,7 @@ impl ProducerRegistry {
             .is_some_and(Self::entry_has_backlog)
     }
 
-    /// Peso para ranking do matcher — msgs primeiro; bytes desempatam.
+    /// Weight for matcher ranking — msgs first; bytes break ties.
     pub async fn backlog_weight(&self, id: u64) -> (u64, u64) {
         self.inner
             .lock()
@@ -249,7 +249,7 @@ impl ProducerRegistry {
             .map_or((0, 0), Self::entry_backlog_weight)
     }
 
-    /// Hot path — um lock, ranking + stale prune.
+    /// Hot path — one lock, ranking + stale prune.
     pub async fn rank_ready_candidates(
         &self,
         candidates: &[u64],
@@ -298,7 +298,7 @@ impl ProducerRegistry {
         (Some(tier[pick]), stale)
     }
 
-    /// Reconcilia registry ↔ pool ready (só no ticker / maintenance).
+    /// Reconciles registry ↔ ready pool (ticker / maintenance only).
     pub async fn sync_matcher_ready_state(
         &self,
         current: &HashSet<u64>,
@@ -372,7 +372,7 @@ impl ProducerRegistry {
         }
     }
 
-    /// Limpa busy stale — PRDY/HBRP indica producer livre mas master preso em ASGN.
+    /// Clears stale busy — PRDY/HBRP shows producer free but master stuck on ASGN.
     pub async fn clear_stale_busy(&self, id: u64, reason: &str) -> bool {
         let mut guard = self.inner.lock().await;
         let Some(e) = guard.get_mut(&id) else {
@@ -386,7 +386,7 @@ impl ProducerRegistry {
         true
     }
 
-    /// Consumer caiu — libera producers presos no assign para esse consumer.
+    /// Consumer dropped — releases producers stuck on assign for that consumer.
     pub async fn clear_assignments_to_consumer(&self, consumer_id: u64) -> usize {
         let mut cleared = 0usize;
         let mut guard = self.inner.lock().await;
@@ -412,7 +412,7 @@ impl ProducerRegistry {
             .and_then(|e| e.pending_consumer_id.take())
     }
 
-    /// `true` se há backlog elegível para rematch (stale busy ou idle+backlog).
+    /// `true` if eligible backlog exists for rematch (stale busy or idle+backlog).
     pub async fn record_heartbeat(&self, id: u64, hb: crate::protocol::ProducerHeartbeat) -> bool {
         let now = crate::metrics_history::unix_ms();
         let mut rematch = false;
@@ -449,7 +449,7 @@ impl ProducerRegistry {
                     }
                 }
             } else if e.state == ProducerState::Idle && hb_ring_backlog {
-                // Ring com dados mas PRDY não chegou — matcher ignora idle.
+                // Ring has data but PRDY not received — matcher ignores idle.
                 tracing::warn!(
                     producer_id = id,
                     ring = hb.ring_messages,
@@ -566,7 +566,7 @@ fn now_secs() -> u64 {
         .unwrap_or(0)
 }
 
-/// Matchmaker — fila consumer CRDY (RR) + pool producer PRDY (ranking por backlog).
+/// Matchmaker — consumer CRDY queue (RR) + producer PRDY pool (backlog ranking).
 pub struct Matchmaker {
     producers: std::sync::Arc<ProducerRegistry>,
     consumers: std::sync::Arc<crate::consumers::ConsumerRegistry>,
@@ -646,7 +646,7 @@ impl Matchmaker {
         self.inner.lock().await.ready.len()
     }
 
-    /// Reconcilia registry ↔ pool — só ticker / maintenance (não no hot path).
+    /// Reconciles registry ↔ pool — ticker / maintenance only (not hot path).
     pub async fn sync_ready_pool(&self) {
         let current = self.inner.lock().await.ready.clone();
         let (add, remove) = self.producers.sync_matcher_ready_state(&current).await;
@@ -659,7 +659,7 @@ impl Matchmaker {
         }
     }
 
-    /// Producer ring tem itens — entra no pool RR (se idle).
+    /// Producer ring has items — enters RR pool (if idle).
     pub async fn on_producer_ready(&self, producer_id: u64) -> Result<(), String> {
         match self.producers.state_of(producer_id).await {
             Some(ProducerState::Busy) => {
@@ -713,7 +713,7 @@ impl Matchmaker {
             .await;
     }
 
-    /// Enfileira CRDY — sem match ainda; `try_match` segue em seguida.
+    /// Enqueues CRDY — no match yet; `try_match` follows.
     pub async fn enqueue_consumer(
         &self,
         consumer_id: u64,
@@ -723,7 +723,7 @@ impl Matchmaker {
         self.push_consumer_wait(consumer_id, ready, data_addr).await;
     }
 
-    /// Consumer pediu batch — bloqueia até assign enviado ou erro.
+    /// Consumer requested batch — blocks until assign sent or error.
     pub async fn on_consumer_read(
         &self,
         consumer_id: u64,
@@ -791,7 +791,7 @@ impl Matchmaker {
         let _ = self.try_match().await;
     }
 
-    /// Consumer TCP caiu — remove da fila CRDY e desbloqueia handler.
+    /// Consumer TCP dropped — removes from CRDY queue and unblocks handler.
     pub async fn cancel_consumer(&self, consumer_id: u64) {
         let pending = {
             let mut inner = self.inner.lock().await;
@@ -974,7 +974,7 @@ mod tests {
         matcher.on_producer_ready(pid).await.unwrap();
         assert_eq!(matcher.ready_pool_len().await, 1);
 
-        // Simula desync: ready no registry, pool vazio.
+        // Simulates desync: ready in registry, empty pool.
         matcher.clear_ready_pool_for_test().await;
 
         matcher.on_producer_ready(pid).await.unwrap();

@@ -1,4 +1,4 @@
-"""Probe TCP BATC — simula producer contra consumer data port."""
+"""Probe TCP BATC — simulates a producer against a consumer data port."""
 import asyncio
 import struct
 import sys
@@ -22,7 +22,7 @@ async def probe(port: int) -> None:
     writer.write(frame)
     try:
         await asyncio.wait_for(writer.drain(), timeout=3)
-        print(f":{port} BATC flush OK (sem reply no data plane)")
+        print(f":{port} BATC flush OK (no reply on data plane)")
     except asyncio.TimeoutError:
         print(f":{port} FLUSH TIMEOUT")
     except Exception as e:

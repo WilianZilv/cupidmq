@@ -29,19 +29,19 @@ pub struct MetricsSnapshot {
     pub bytes_per_sec: f64,
     pub producers_connected: u64,
     pub consumers_connected: u64,
-    /// Na fila do matcher — CRDY enfileirado, ASGN pendente (state=matcher_queue).
+    /// In matcher queue — CRDY enqueued, ASGN pending (state=matcher_queue).
     pub consumers_waiting: u64,
-    /// ASGN enviado — aguardando BATC TCP (state=awaiting_batch).
+    /// ASGN sent — awaiting BATC TCP (state=awaiting_batch).
     pub consumers_await_batch: u64,
     pub producers_ready: u64,
     pub producers_busy: u64,
-    /// Alias de consumers_waiting (fila matcher).
+    /// Alias for consumers_waiting (matcher queue).
     pub consumers_queued: u64,
-    /// Soma μ vs demanda (transfer + Δbacklog).
+    /// Sum of μ vs demand (transfer + Δbacklog).
     pub consumer_capacity_pct: f64,
     pub producers: Vec<crate::producers::ProducerRow>,
     pub consumers: Vec<crate::consumers::ConsumerRow>,
-    /// Ticks pendentes no buffer (GET /metrics/ticks drena).
+    /// Ticks pending in buffer (GET /metrics/ticks drains).
     pub ticks_buffered: u64,
 }
 
@@ -122,7 +122,7 @@ impl Metrics {
         let phase = if ok { "deliver" } else { "fail" };
         if ok {
             if msg_count == 0 {
-                // ASGN concluído sem payload (ring vazio no producer) — não é transfer.
+                // ASGN completed with no payload (empty producer ring) — not a transfer.
                 return;
             }
             self.record_transfer(msg_count, batch_bytes);
@@ -244,7 +244,7 @@ impl Metrics {
             self.compute_backlog_growth_per_sec(backlog.backlog_messages(), now_ms);
         let mut ingress_per_sec = demand_per_sec(transfer_per_sec, backlog_growth);
         if ingress_per_sec <= 0.01 && backlog.backlog_messages() > 0 {
-            // 1º poll ou transfer=0 — backlog alto ⇒ não reportar 100% falso.
+            // First poll or transfer=0 — high backlog ⇒ do not report false 100%.
             ingress_per_sec = if transfer_per_sec > 0.01 {
                 transfer_per_sec
             } else {

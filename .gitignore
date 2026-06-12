@@ -8,5 +8,6 @@ __pycache__/
 .venv/
 /.python-version
 dashboard/dist/
+dashboard/public/favicon.png
 master/cupidmq.conf
 *.log

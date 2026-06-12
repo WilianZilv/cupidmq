@@ -4,7 +4,7 @@ export type TransferHistoryEntry = {
   id: string;
   ts: number;
   producer: string;
-  /** Endereço TCP completo (tooltip). */
+  /** Full TCP address (tooltip). */
   producerAddr?: string;
   message: string;
   consumer: string;

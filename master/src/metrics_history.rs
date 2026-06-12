@@ -142,7 +142,7 @@ impl MetricsHistory {
         self.points.lock().await.clone()
     }
 
-    /// Últimas taxas amostradas — mesma fonte do gráfico /metrics/history.
+    /// Latest sampled rates — same source as /metrics/history chart.
     pub async fn last_rates(&self) -> (f64, f64, f64) {
         let points = self.points.lock().await;
         if let Some(p) = points.last() {

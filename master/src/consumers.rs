@@ -24,14 +24,14 @@ pub struct ConsumerRow {
     pub last_batch_items: u64,
     pub last_batch_bytes: u64,
     pub connected_secs: u64,
-    /// 0–100: μ/λ — consegue absorver a cota no publish atual?
+    /// 0–100: μ/λ — can absorb fair share at current publish rate?
     pub capacity_pct: f64,
-    /// EMA ms entre entrega do batch e próximo CRDY.
+    /// EMA ms between batch delivery and next CRDY.
     pub ready_cycle_ms: f64,
-    /// EMA itens por batch entregue (não max_items pedido).
+    /// EMA items per delivered batch (not requested max_items).
     pub avg_batch_items: f64,
     pub max_batch_requested: u16,
-    /// Producer do ASGN em voo (await BATC).
+    /// Producer of in-flight ASGN (await BATC).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub assigned_producer_id: Option<u64>,
 }
@@ -68,7 +68,7 @@ struct ConsumerEntry {
 pub struct ConsumerRegistry {
     next_id: AtomicU64,
     inner: Mutex<HashMap<u64, ConsumerEntry>>,
-    /// producer_id → consumers em await BATC (stale assign O(1)).
+    /// producer_id → consumers awaiting BATC (stale assign O(1)).
     awaiting_by_producer: Mutex<HashMap<u64, HashSet<u64>>>,
 }
 
@@ -176,7 +176,7 @@ impl ConsumerRegistry {
         }
     }
 
-    /// Uma lock por ciclo CRDY — substitui vários set_state/on_ready separados.
+    /// One lock per CRDY cycle — replaces separate set_state/on_ready calls.
     pub async fn begin_cycle(
         &self,
         id: u64,
@@ -220,7 +220,7 @@ impl ConsumerRegistry {
         self.track_awaiting(producer_id, id).await;
     }
 
-    /// Producer novo ASGN — limpa await stale de ciclo anterior (DELV não refletiu).
+    /// New producer ASGN — clears stale await from prior cycle (DELV not reflected).
     pub async fn release_stale_assignments(&self, producer_id: u64, keep_consumer_id: u64) {
         let stale: Vec<u64> = {
             let awaiting = self.awaiting_by_producer.lock().await;
@@ -286,7 +286,7 @@ impl ConsumerRegistry {
         }
     }
 
-    /// Contexto do último CRDY — para re-enfileirar após queda do producer.
+    /// Last CRDY context — for re-enqueue after producer drop.
     pub async fn match_context(&self, id: u64) -> Option<(ReadyRequest, Arc<str>)> {
         let guard = self.inner.lock().await;
         let e = guard.get(&id)?;
