@@ -23,7 +23,7 @@ pub struct ResolvedConfig {
     pub metrics: String,
     pub history_interval_ms: u64,
     pub history_cap: usize,
-    /// Directory with built dashboard (`index.html` + assets). Empty = API only.
+    /// Override dashboard static files (`index.html` + assets). Empty = embedded (release builds) or API only (dev).
     pub dashboard_dir: Option<String>,
 }
 

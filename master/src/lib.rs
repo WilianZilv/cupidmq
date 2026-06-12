@@ -6,6 +6,8 @@ pub mod capacity;
 pub mod client;
 pub mod consumer;
 pub mod config;
+#[cfg(feature = "embed-dashboard")]
+pub mod dashboard_embed;
 pub mod consumers;
 pub mod metrics;
 pub mod metrics_cache;

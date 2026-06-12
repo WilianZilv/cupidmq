@@ -2,11 +2,22 @@
 $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $Master = Join-Path $Root "master"
+$Dashboard = Join-Path $Root "dashboard"
 $Dist = Join-Path $Root "dist"
 $Target = Join-Path $Master "target\release"
 
+$env:VITE_CUPIDMQ_METRICS = "/metrics"
+Push-Location $Dashboard
+npm ci
+if ($LASTEXITCODE -ne 0) { Pop-Location; exit $LASTEXITCODE }
+npm run build
+if ($LASTEXITCODE -ne 0) { Pop-Location; exit $LASTEXITCODE }
+Pop-Location
+
 Push-Location $Master
-cargo build --release
+cargo build --release --bin cupidmq-headless
+if ($LASTEXITCODE -ne 0) { Pop-Location; exit $LASTEXITCODE }
+cargo build --release --bin cupidmq --features embed-dashboard
 if ($LASTEXITCODE -ne 0) { Pop-Location; exit $LASTEXITCODE }
 cargo build --release --example cupidmq-producer
 if ($LASTEXITCODE -ne 0) { Pop-Location; exit $LASTEXITCODE }
@@ -14,15 +25,22 @@ Pop-Location
 
 New-Item -ItemType Directory -Force -Path $Dist | Out-Null
 
-$MasterBin = Join-Path $Target "cupidmq.exe"
+$Ext = ""
+$HeadlessBin = Join-Path $Target "cupidmq-headless.exe"
+$DashboardBin = Join-Path $Target "cupidmq.exe"
 $ProducerBin = Join-Path $Target "examples\cupidmq-producer.exe"
-if (-not (Test-Path $MasterBin)) {
-    $MasterBin = Join-Path $Target "cupidmq"
+if (-not (Test-Path $HeadlessBin)) {
+    $Ext = ""
+    $HeadlessBin = Join-Path $Target "cupidmq-headless"
+    $DashboardBin = Join-Path $Target "cupidmq"
     $ProducerBin = Join-Path $Target "examples/cupidmq-producer"
+} else {
+    $Ext = ".exe"
 }
 
-Copy-Item $MasterBin (Join-Path $Dist "cupidmq$([IO.Path]::GetExtension($MasterBin))") -Force
-Copy-Item $ProducerBin (Join-Path $Dist "cupidmq-producer$([IO.Path]::GetExtension($ProducerBin))") -Force
+Copy-Item $HeadlessBin (Join-Path $Dist "cupidmq-headless$Ext") -Force
+Copy-Item $DashboardBin (Join-Path $Dist "cupidmq$Ext") -Force
+Copy-Item $ProducerBin (Join-Path $Dist "cupidmq-producer$Ext") -Force
 Copy-Item (Join-Path $Master "cupidmq.conf.example") (Join-Path $Dist "cupidmq.conf.example") -Force
 
 Write-Host "[publish] dist/"

@@ -122,19 +122,33 @@ async fn run_metrics_server(
         .route("/health", get(|| async { "ok" }))
         .with_state(state);
 
-    let app = match dashboard_dir.filter(|p| p.is_dir()) {
-        Some(dir) => {
-            let index = dir.join("index.html");
-            if index.is_file() {
-                info!(path = %dir.display(), "serving dashboard static files");
-            } else {
-                warn!(path = %index.display(), "dashboard_dir set but index.html missing");
-            }
-            Router::new().merge(api).fallback_service(
-                ServeDir::new(dir.clone()).not_found_service(ServeFile::new(index)),
-            )
+    let app = if let Some(dir) = dashboard_dir.filter(|p| p.is_dir()) {
+        let index = dir.join("index.html");
+        if index.is_file() {
+            info!(path = %dir.display(), "serving dashboard static files");
+        } else {
+            warn!(path = %index.display(), "dashboard_dir set but index.html missing");
         }
-        None => api,
+        Router::new().merge(api).fallback_service(
+            ServeDir::new(dir.clone()).not_found_service(ServeFile::new(index)),
+        )
+    } else {
+        #[cfg(feature = "embed-dashboard")]
+        {
+            if crate::dashboard_embed::has_index() {
+                info!("serving embedded dashboard");
+                Router::new()
+                    .merge(api)
+                    .fallback(crate::dashboard_embed::serve)
+            } else {
+                warn!("embed-dashboard enabled but index.html missing at build time");
+                api
+            }
+        }
+        #[cfg(not(feature = "embed-dashboard"))]
+        {
+            api
+        }
     };
 
     let app = app.layer(CorsLayer::permissive());

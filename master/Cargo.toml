@@ -1,6 +1,6 @@
 [package]
 name = "cupidmq"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "CupidMQ — brokerless P2P batch queue; master matchmaker + producer client"
 repository = "https://github.com/WilianZilv/cupidmq"
@@ -9,8 +9,13 @@ repository = "https://github.com/WilianZilv/cupidmq"
 name = "cupidmq"
 
 [[bin]]
+name = "cupidmq-headless"
+path = "src/main.rs"
+
+[[bin]]
 name = "cupidmq"
 path = "src/main.rs"
+required-features = ["embed-dashboard"]
 
 [[example]]
 name = "producer"
@@ -28,8 +33,13 @@ path = "examples/cupidmq-producer.rs"
 name = "docker-consumer"
 path = "examples/docker-consumer.rs"
 
+[features]
+default = []
+embed-dashboard = ["dep:rust-embed"]
+
 [dependencies]
 anyhow = "1"
+rust-embed = { version = "8", optional = true }
 axum = { version = "0.8", features = ["json"] }
 bytes = "1"
 clap = { version = "4", features = ["derive", "env"] }

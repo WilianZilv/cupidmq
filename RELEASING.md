@@ -6,7 +6,8 @@ Branch: **`main`**. Consumption map: [README — Use in your project](README.md#
 
 | Artifact | Install from |
 |----------|----------------|
-| `cupidmq` / `cupidmq.exe` | GitHub **Release** — master binary |
+| `cupidmq-headless` / `cupidmq-headless.exe` | GitHub **Release** — master, metrics API only (`:9752/health`, `/metrics`) |
+| `cupidmq` / `cupidmq.exe` | Same Release — master **with embedded dashboard** (`:9752/`) |
 | `cupidmq.conf.example` | Same Release (once, from Linux job) |
 | `cupidmq_client-*.whl` | GitHub **Release** URL (`pip` / `uv`) |
 | Rust library | **Git repo** — `tag`, `branch`, or `rev` (not a Release URL) |
@@ -48,9 +49,10 @@ Replace the remote URL with your org/repo.
    git push origin v0.1.0
    ```
 
-5. [`.github/workflows/release.yml`](.github/workflows/release.yml) builds and uploads:
-   - `cupidmq` (Linux) + `cupidmq.exe` (Windows)
-   - `cupidmq.conf.example`
+5. [`.github/workflows/release.yml`](.github/workflows/release.yml) builds the Vite dashboard and uploads **two** master binaries per OS:
+   - `cupidmq-headless` — no UI (smaller)
+   - `cupidmq` — dashboard embedded (`:9752/`)
+   - `cupidmq.conf.example` (Linux job)
    - `cupidmq_client-0.1.0-py3-none-any.whl`
 
 6. Verify on GitHub → **Releases** → assets list.
@@ -62,6 +64,8 @@ Normal. `v0.1.0`, `v0.1.1`, `v0.2.0` can all live on the same branch history. Co
 ## Local dry-run (no GitHub)
 
 ```bash
-make publish          # binaries → dist/
+make publish          # dashboard build + embedded master → dist/
 make publish-packages # wheel → dist/
 ```
+
+`make publish` builds `cupidmq-headless` first, then `npm run build` + `cupidmq` with `embed-dashboard` (two separate `cargo` invocations so headless stays slim).

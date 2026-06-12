@@ -1,81 +1,110 @@
-name: Release
-
-on:
-  push:
-    tags: ["v*"]
-
-permissions:
-  contents: write
-
-jobs:
-  validate:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Tag matches Cargo.toml and pyproject.toml
-        run: bash scripts/check-release-version.sh "${{ github.ref_name }}"
-
-  build:
-    needs: validate
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            ext: ""
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-            ext: ".exe"
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.target }}
-      - name: Build master binary
-        working-directory: master
-        run: cargo build --release --target ${{ matrix.target }}
-      - name: Stage artifacts
-        shell: bash
-        run: |
-          mkdir -p dist
-          cp "master/target/${{ matrix.target }}/release/cupidmq${{ matrix.ext }}" dist/cupidmq${{ matrix.ext }}
-          if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
-            cp master/cupidmq.conf.example dist/
-          fi
-      - uses: actions/upload-artifact@v4
-        with:
-          name: cupidmq-${{ matrix.target }}
-          path: dist/*
-
-  wheel:
-    needs: validate
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
-      - name: Build Python wheel
-        working-directory: python-client
-        run: uv build --wheel
-        env:
-          UV_PYTHON: "3.11"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: cupidmq-wheel
-          path: python-client/dist/*.whl
-
-  release:
-    needs: [build, wheel]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-          pattern: cupidmq-*
-          merge-multiple: true
-      - uses: softprops/action-gh-release@v2
-        with:
-          generate_release_notes: true
-          files: artifacts/*
-
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tag matches Cargo.toml and pyproject.toml
+        run: bash scripts/check-release-version.sh "${{ github.ref_name }}"
+
+  dashboard:
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Build dashboard
+        working-directory: dashboard
+        env:
+          VITE_CUPIDMQ_METRICS: /metrics
+        run: |
+          npm ci
+          npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dashboard-dist
+          path: dashboard/dist
+
+  build:
+    needs: [validate, dashboard]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            ext: ""
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            ext: ".exe"
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dashboard-dist
+          path: dashboard/dist
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - name: Build headless binary
+        working-directory: master
+        run: cargo build --release --target ${{ matrix.target }} --bin cupidmq-headless
+      - name: Build dashboard binary
+        working-directory: master
+        run: cargo build --release --target ${{ matrix.target }} --bin cupidmq --features embed-dashboard
+      - name: Stage artifacts
+        shell: bash
+        run: |
+          mkdir -p dist
+          bin="master/target/${{ matrix.target }}/release"
+          cp "${bin}/cupidmq-headless${{ matrix.ext }}" dist/
+          cp "${bin}/cupidmq${{ matrix.ext }}" dist/
+          if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
+            cp master/cupidmq.conf.example dist/
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cupidmq-${{ matrix.target }}
+          path: dist/*
+
+  wheel:
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Build Python wheel
+        working-directory: python-client
+        run: uv build --wheel
+        env:
+          UV_PYTHON: "3.11"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cupidmq-wheel
+          path: python-client/dist/*.whl
+
+  release:
+    needs: [build, wheel]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: cupidmq-*
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: artifacts/*
+

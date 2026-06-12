@@ -24,7 +24,7 @@ help:
 	@echo "  make test-python    uv sync + unittest in python-client/"
 	@echo "  make stress         stress-tcp.ps1 (16p x 20c)"
 	@echo "  make sim            sim-load.ps1"
-	@echo "  make publish        release binaries -> dist/"
+	@echo "  make publish        cupidmq-headless + cupidmq -> dist/"
 	@echo "  make publish-packages  Python wheel -> dist/"
 	@echo "  make check-release TAG=v0.1.0  verify versions before tag"
 	@echo "  make docker-master-up   master only (root docker-compose.yml)"

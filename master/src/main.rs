@@ -71,7 +71,13 @@ async fn main() -> Result<()> {
         },
     );
 
+    let variant = if cfg!(feature = "embed-dashboard") {
+        "cupidmq"
+    } else {
+        "cupidmq-headless"
+    };
     info!(
+        variant,
         config = resolved.config_path.as_ref().map(|p| p.display().to_string()),
         host = %resolved.host,
         control_port = resolved.control_port,

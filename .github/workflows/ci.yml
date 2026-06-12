@@ -13,9 +13,21 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
       - name: cargo test
         working-directory: master
         run: cargo test
+
+      - name: Build release binaries smoke
+        env:
+          VITE_CUPIDMQ_METRICS: /metrics
+        run: |
+          cd master && cargo build --release --bin cupidmq-headless
+          cd ../dashboard && npm ci && npm run build
+          cd ../master && cargo build --release --bin cupidmq --features embed-dashboard
 
   python:
     runs-on: ubuntu-latest

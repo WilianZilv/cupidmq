@@ -13,4 +13,4 @@ Dockerfiles, entrypoints, and master config for CupidMQ images.
 | `Dockerfile.python-client` | Python harness consumer |
 | `entrypoint-consumer.sh` | BATC port flock + consumer spawn |
 | `run-python-consumer.sh` | Python consumer wrapper |
-| `cupidmq.conf` | Master bind + dashboard path (copied into master image) |
+| `cupidmq.conf` | Master bind (dashboard embedded in image binary) |

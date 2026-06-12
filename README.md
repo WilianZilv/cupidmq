@@ -294,7 +294,7 @@ Branch **`main`** · `https://github.com/WilianZilv/cupidmq` · not on crates.io
 
 | Piece | Source | Pin |
 |-------|--------|-----|
-| **Master binary** | [GitHub Release](https://github.com/WilianZilv/cupidmq/releases) | `cupidmq` / `cupidmq.exe` |
+| **Master binary** | [GitHub Release](https://github.com/WilianZilv/cupidmq/releases) | `cupidmq-headless` (API only) or `cupidmq` (dashboard on `:9752/`) |
 | **Master Docker** | git | `#main` or `#v0.1.0` |
 | **Rust crate** | git | `tag` / `branch` + `path = "master"` |
 | **Python** | Release **wheel** or git | `.whl` URL or `@main` |
@@ -323,7 +323,7 @@ metrics_port=9752
 | Port | Role |
 |------|------|
 | **9750** | Control — `PRDY` `CRDY` `ASGN` `REG!` … |
-| **9752** | HTTP metrics + dashboard |
+| **9752** | HTTP metrics + dashboard (`cupidmq` binary, or `dashboard_dir` override; headless = API only) |
 | **9760+** | Data — `BATC` (P2P, per consumer) |
 
 Consumer: advertise routable `data_addr` in `REG!`; bind `0.0.0.0:<port>` for `BATC`.

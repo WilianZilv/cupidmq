@@ -13,7 +13,8 @@ RUN npm run build
 FROM rust:1-bookworm AS rust
 WORKDIR /build
 COPY master/ ./master/
-RUN cargo build --release --manifest-path master/Cargo.toml
+COPY --from=dashboard /build/dashboard/dist /build/dashboard/dist
+RUN cargo build --release --manifest-path master/Cargo.toml --bin cupidmq --features embed-dashboard
 
 FROM debian:bookworm-slim AS runtime
 RUN apt-get update \
@@ -21,7 +22,6 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=rust /build/master/target/release/cupidmq /usr/local/bin/cupidmq
-COPY --from=dashboard /build/dashboard/dist /app/dashboard
 COPY docker/cupidmq.conf /app/cupidmq.conf
 
 EXPOSE 9750 9752

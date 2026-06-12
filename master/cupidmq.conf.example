@@ -5,8 +5,8 @@ host=0.0.0.0
 control_port=9750
 metrics_port=9752
 
-# Optional — Vite `dist/` directory (Docker sets /app/dashboard)
-# dashboard_dir=/app/dashboard
+# Optional — serve dashboard from disk (`cupidmq` release binary embeds UI; headless has no UI)
+# dashboard_dir=/path/to/vite/dist
 
 # BATC (data plane) is NOT on the master — each consumer listens on :9760+ and advertises via REG!
 
