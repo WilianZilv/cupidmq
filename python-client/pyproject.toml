@@ -6,7 +6,7 @@ requires-python = ">=3.11"
 dependencies = []
 
 [project.urls]
-Repository = "https://github.com/tecnomarra/cupidmq"
+Repository = "https://github.com/WilianZilv/cupidmq"
 
 [project.scripts]
 cupidmq-consumer = "harness.consumer_cli:main"

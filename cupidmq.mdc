@@ -10,7 +10,7 @@ alwaysApply: false
 
 **Status:** experimental. **Pull matchmaker** + **data plane P2P** (TCP BATC). Modelo: **1 canal control** (master) + **entrega direta producer→consumer** com ACK.
 
-**Repo:** standalone `cupidmq/` · branch **`main`** · `https://github.com/tecnomarra/cupidmq`
+**Repo:** standalone `cupidmq/` · branch **`main`** · `https://github.com/WilianZilv/cupidmq`
 
 **Consumo externo** (sem clone): ver [README#use-in-your-project](README.md#use-in-your-project) · [RELEASING.md](RELEASING.md)
 

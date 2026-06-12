@@ -19,7 +19,7 @@ Branch: **`main`**. Consumption map: [README — Use in your project](README.md#
 git init -b main
 git add .
 git commit -m "chore: initial cupidmq"
-git remote add origin https://github.com/tecnomarra/cupidmq.git
+git remote add origin https://github.com/WilianZilv/cupidmq.git
 git push -u origin main
 ```
 

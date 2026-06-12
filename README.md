@@ -222,7 +222,7 @@ Tune `outbound_max_bytes` for how much burst each producer may buffer **while wa
 
 ## Use in your project
 
-No clone into your monorepo. Branch **`main`** on GitHub (`https://github.com/tecnomarra/cupidmq`). Not on crates.io or PyPI.
+No clone into your monorepo. Branch **`main`** on GitHub (`https://github.com/WilianZilv/cupidmq`). Not on crates.io or PyPI.
 
 ### Where each piece comes from
 
@@ -237,7 +237,7 @@ Multiple tags (`v0.1.0`, `v0.1.1`, …) on the same `main` history — each tag 
 
 ### Master binary (Release)
 
-After `git push origin v0.1.0` → [Release assets](https://github.com/tecnomarra/cupidmq/releases):
+After `git push origin v0.1.0` → [Release assets](https://github.com/WilianZilv/cupidmq/releases):
 
 ```bash
 # Linux example — pick the asset for your OS
@@ -250,7 +250,7 @@ Also on each Release: `cupidmq-producer`, `cupidmq.conf.example`.
 ### Master Docker (git)
 
 ```bash
-docker build -t cupidmq-master https://github.com/tecnomarra/cupidmq.git#main
+docker build -t cupidmq-master https://github.com/WilianZilv/cupidmq.git#main
 docker run -d -p 9750:9750 -p 9752:9752 cupidmq-master
 ```
 
@@ -260,7 +260,7 @@ Pinned release:
 services:
   cupidmq-master:
     build:
-      context: https://github.com/tecnomarra/cupidmq.git#v0.1.0
+      context: https://github.com/WilianZilv/cupidmq.git#v0.1.0
     ports: ["9750:9750", "9752:9752"]
 ```
 
@@ -270,10 +270,10 @@ Folder `master/` ≠ branch name. Cargo **cannot** `cargo add` a Release `.crate
 
 ```toml
 # fixed release (same commit as Release v0.1.0)
-cupidmq = { git = "https://github.com/tecnomarra/cupidmq.git", tag = "v0.1.0", path = "master" }
+cupidmq = { git = "https://github.com/WilianZilv/cupidmq.git", tag = "v0.1.0", path = "master" }
 
 # rolling HEAD of main
-cupidmq = { git = "https://github.com/tecnomarra/cupidmq.git", branch = "main", path = "master" }
+cupidmq = { git = "https://github.com/WilianZilv/cupidmq.git", branch = "main", path = "master" }
 ```
 
 ```rust
@@ -292,15 +292,15 @@ async fn main() -> anyhow::Result<()> {
 **Release wheel** (recommended for pinned prod):
 
 ```bash
-pip install "https://github.com/tecnomarra/cupidmq/releases/download/v0.1.0/cupidmq_client-0.1.0-py3-none-any.whl"
-uv add "cupidmq-client @ https://github.com/tecnomarra/cupidmq/releases/download/v0.1.0/cupidmq_client-0.1.0-py3-none-any.whl"
+pip install "https://github.com/WilianZilv/cupidmq/releases/download/v0.1.0/cupidmq_client-0.1.0-py3-none-any.whl"
+uv add "cupidmq-client @ https://github.com/WilianZilv/cupidmq/releases/download/v0.1.0/cupidmq_client-0.1.0-py3-none-any.whl"
 ```
 
 **Git** (rolling `main` or tag):
 
 ```bash
-uv add "cupidmq-client @ git+https://github.com/tecnomarra/cupidmq.git@main#subdirectory=python-client"
-uv add "cupidmq-client @ git+https://github.com/tecnomarra/cupidmq.git@v0.1.0#subdirectory=python-client"
+uv add "cupidmq-client @ git+https://github.com/WilianZilv/cupidmq.git@main#subdirectory=python-client"
+uv add "cupidmq-client @ git+https://github.com/WilianZilv/cupidmq.git@v0.1.0#subdirectory=python-client"
 ```
 
 Package `cupidmq-client` · import `cupidmq` · Python ≥ 3.11.

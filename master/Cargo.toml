@@ -3,7 +3,7 @@ name = "cupidmq"
 version = "0.1.0"
 edition = "2021"
 description = "CupidMQ — brokerless P2P batch queue; master matchmaker + producer client"
-repository = "https://github.com/tecnomarra/cupidmq"
+repository = "https://github.com/WilianZilv/cupidmq"
 
 [lib]
 name = "cupidmq"
