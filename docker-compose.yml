@@ -1,0 +1,26 @@
+# CupidMQ master + dashboard (production-style single service).
+#
+#   docker compose up -d --build
+#   docker compose down
+#
+# Dashboard & metrics: http://127.0.0.1:9752/
+# Control (producers/consumers): 127.0.0.1:9750
+#
+# Run producers/consumers on the host (or another compose stack) against these ports.
+# Full multi-replica E2E: test-environments/integration/
+
+services:
+  master:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "9750:9750"
+      - "9752:9752"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:9752/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s

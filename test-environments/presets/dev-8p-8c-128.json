@@ -1,0 +1,28 @@
+{
+  "id": "dev-8p-8c-128",
+  "name": "8p @128/s 64–128KB payload · 8c batch32 · 2–8ms/item",
+  "producers": {
+    "count": 8,
+    "rate_min": 128,
+    "rate_max": 128,
+    "payload_bytes_min": 65536,
+    "payload_bytes_max": 131072,
+    "batch_mode": true,
+    "flush_timeout_ms": 100,
+    "outbound_max_mb": 256,
+    "reconnect_delay_secs": 2,
+    "duration_secs": 3600
+  },
+  "consumers": {
+    "count": 8,
+    "max_batch_size_count": 32,
+    "simulate_process_ms": true,
+    "process_ms_min": 2,
+    "process_ms_max": 8,
+    "prefetch_batch_count": 4,
+    "batch_timeout_secs": 12,
+    "data_idle_secs": 60,
+    "reconnect_delay_secs": 2,
+    "log_every": 25
+  }
+}

@@ -1,0 +1,90 @@
+# Integration test fallback — bridge network (Docker Desktop Win/Mac).
+# No Docker DNS between clients — traffic via host-gateway.
+# Four explicit consumers (replicas cannot map unique host ports on bridge).
+
+x-consumer: &consumer
+  build:
+    context: ../..
+    dockerfile: docker/Dockerfile.client
+  restart: unless-stopped
+  extra_hosts:
+    - "cupidmq-host:host-gateway"
+  depends_on:
+    master:
+      condition: service_healthy
+
+services:
+  master:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    ports:
+      - "9750:9750"
+      - "9752:9752"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:9752/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  producer:
+    build:
+      context: ../..
+      dockerfile: docker/Dockerfile.client
+    restart: unless-stopped
+    extra_hosts:
+      - "cupidmq-host:host-gateway"
+    depends_on:
+      master:
+        condition: service_healthy
+    environment:
+      CUPIDMQ_MASTER: cupidmq-host:9750
+    command:
+      - cupidmq-producer
+      - --rate
+      - "30"
+      - --duration-secs
+      - "0"
+      - --batch-mode
+
+  consumer-0:
+    <<: *consumer
+    ports: ["9760:9760"]
+    environment:
+      CUPIDMQ_MASTER: cupidmq-host:9750
+      CUPIDMQ_DATA_ADDR: cupidmq-host:9760
+      CUPIDMQ_BIND_ADDR: 0.0.0.0:9760
+      CUPIDMQ_CONSUMER_TAG: consumer-0
+    command: ["/usr/local/bin/docker-consumer"]
+
+  consumer-1:
+    <<: *consumer
+    ports: ["9761:9761"]
+    environment:
+      CUPIDMQ_MASTER: cupidmq-host:9750
+      CUPIDMQ_DATA_ADDR: cupidmq-host:9761
+      CUPIDMQ_BIND_ADDR: 0.0.0.0:9761
+      CUPIDMQ_CONSUMER_TAG: consumer-1
+    command: ["/usr/local/bin/docker-consumer"]
+
+  consumer-2:
+    <<: *consumer
+    ports: ["9762:9762"]
+    environment:
+      CUPIDMQ_MASTER: cupidmq-host:9750
+      CUPIDMQ_DATA_ADDR: cupidmq-host:9762
+      CUPIDMQ_BIND_ADDR: 0.0.0.0:9762
+      CUPIDMQ_CONSUMER_TAG: consumer-2
+    command: ["/usr/local/bin/docker-consumer"]
+
+  consumer-3:
+    <<: *consumer
+    ports: ["9763:9763"]
+    environment:
+      CUPIDMQ_MASTER: cupidmq-host:9750
+      CUPIDMQ_DATA_ADDR: cupidmq-host:9763
+      CUPIDMQ_BIND_ADDR: 0.0.0.0:9763
+      CUPIDMQ_CONSUMER_TAG: consumer-3
+    command: ["/usr/local/bin/docker-consumer"]

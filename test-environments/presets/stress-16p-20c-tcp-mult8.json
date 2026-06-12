@@ -1,0 +1,29 @@
+{
+  "id": "stress-16p-20c-tcp-mult8",
+  "name": "Stress 16 producers × 20 consumers (TCP BATC mult×8)",
+  "producers": {
+    "count": 16,
+    "rate_min": 512,
+    "rate_max": 512,
+    "publish_mult": 8,
+    "payload_bytes": 8192,
+    "reuse_payload": true,
+    "batch_mode": true,
+    "flush_timeout_ms": 100,
+    "max_batch_size_mb": 64,
+    "outbound_max_mb": 4096,
+    "delivery_timeout_secs": 8,
+    "reconnect_delay_secs": 2,
+    "duration_secs": 3600
+  },
+  "consumers": {
+    "count": 20,
+    "max_batch_size_count": 128,
+    "simulate_process_ms": false,
+    "prefetch_batch_count": 4,
+    "batch_timeout_secs": 12,
+    "data_idle_secs": 60,
+    "reconnect_delay_secs": 2,
+    "log_every": 50
+  }
+}

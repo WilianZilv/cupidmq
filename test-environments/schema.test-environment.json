@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cupidmq-test-environment",
+  "title": "CupidMQ test environment preset",
+  "type": "object",
+  "required": ["id", "name", "producers", "consumers"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$"
+    },
+    "name": { "type": "string" },
+    "producers": { "$ref": "#/$defs/producers" },
+    "consumers": { "$ref": "#/$defs/consumers" }
+  },
+  "$defs": {
+    "producers": {
+      "type": "object",
+      "required": ["count"],
+      "additionalProperties": true,
+      "properties": {
+        "count": { "type": "integer", "minimum": 0 },
+        "rate": { "type": "integer", "minimum": 0 },
+        "rate_min": { "type": "integer", "minimum": 0 },
+        "rate_max": { "type": "integer", "minimum": 0 },
+        "publish_mult": { "type": "integer", "minimum": 1 },
+        "payload_bytes": { "type": "integer", "minimum": 20 },
+        "payload_bytes_min": { "type": "integer", "minimum": 20 },
+        "payload_bytes_max": { "type": "integer", "minimum": 20 },
+        "payload_pattern": { "type": "string", "enum": ["zeros", "random", "increment"] },
+        "reuse_payload": { "type": "boolean" },
+        "batch_mode": { "type": "boolean" },
+        "flush_timeout_ms": { "type": "integer", "minimum": 1 },
+        "max_batch_size_mb": { "type": "integer", "minimum": 1 },
+        "outbound_max_mb": { "type": "integer", "minimum": 1 },
+        "delivery_timeout_secs": { "type": "integer", "minimum": 1 },
+        "reconnect_delay_secs": { "type": "integer", "minimum": 1 },
+        "duration_secs": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "consumers": {
+      "type": "object",
+      "required": ["count"],
+      "additionalProperties": true,
+      "properties": {
+        "count": { "type": "integer", "minimum": 0 },
+        "max_batch_size_count": { "type": "integer", "minimum": 1 },
+        "simulate_process_ms": { "type": "boolean" },
+        "process_ms_min": { "type": "number" },
+        "process_ms_max": { "type": "number" },
+        "prefetch_batch_count": { "type": "integer", "minimum": 1 },
+        "batch_timeout_secs": { "type": "number", "minimum": 1 },
+        "reconnect_delay_secs": { "type": "number" },
+        "log_every": { "type": "integer", "minimum": 1 }
+      }
+    }
+  }
+}

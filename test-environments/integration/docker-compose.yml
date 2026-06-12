@@ -1,0 +1,92 @@
+# Integration test — 8 producers + 8 Rust + 8 Python consumers (Linux host network).
+#
+#   make docker-up
+#   docker compose -f test-environments/integration/docker-compose.yml \
+#     --env-file test-environments/integration/.env down -v
+#   docker compose -f test-environments/integration/docker-compose.yml \
+#     --env-file test-environments/integration/.env up --build \
+#     --scale producer=8 --scale consumer-rust=8 --scale consumer-python=8
+#
+# BATC ports: flock volume → 9760, 9761, … (consumers share one counter).
+
+services:
+  master:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    network_mode: host
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:9752/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  producer:
+    build:
+      context: ../..
+      dockerfile: docker/Dockerfile.client
+    network_mode: host
+    restart: unless-stopped
+    depends_on:
+      master:
+        condition: service_healthy
+    environment:
+      CUPIDMQ_MASTER: ${CUPIDMQ_HOST_IP:?set in test-environments/integration/.env}:9750
+    command:
+      - cupidmq-producer
+      - --rate
+      - "${CUPIDMQ_PRODUCER_RATE:-120}"
+      - --duration-secs
+      - "0"
+      - --batch-mode
+      - --payload-bytes
+      - "${CUPIDMQ_PAYLOAD_BYTES:-102400}"
+
+  consumer-rust:
+    build:
+      context: ../..
+      dockerfile: docker/Dockerfile.client
+    network_mode: host
+    restart: unless-stopped
+    entrypoint: ["/app/entrypoint-consumer.sh"]
+    depends_on:
+      master:
+        condition: service_healthy
+    environment:
+      CUPIDMQ_MASTER: ${CUPIDMQ_HOST_IP}:9750
+      CUPIDMQ_ADVERTISE_HOST: ${CUPIDMQ_HOST_IP}
+      CUPIDMQ_DATA_PORT_BASE: ${CUPIDMQ_DATA_PORT_BASE:-9760}
+      CUPIDMQ_PROCESS_MS_MIN: ${CUPIDMQ_PROCESS_MS_MIN:-2}
+      CUPIDMQ_PROCESS_MS_MAX: ${CUPIDMQ_PROCESS_MS_MAX:-16}
+      CUPIDMQ_ALLOC_DIR: /var/lib/cupidmq
+      CUPIDMQ_CONSUMER_BIN: /usr/local/bin/docker-consumer
+      CUPIDMQ_CONSUMER_TAG_PREFIX: rust
+    volumes:
+      - cupidmq-port-alloc:/var/lib/cupidmq
+
+  consumer-python:
+    build:
+      context: ../..
+      dockerfile: docker/Dockerfile.python-client
+    network_mode: host
+    restart: unless-stopped
+    entrypoint: ["/app/entrypoint-consumer.sh"]
+    depends_on:
+      master:
+        condition: service_healthy
+    environment:
+      CUPIDMQ_MASTER: ${CUPIDMQ_HOST_IP}:9750
+      CUPIDMQ_ADVERTISE_HOST: ${CUPIDMQ_HOST_IP}
+      CUPIDMQ_DATA_PORT_BASE: ${CUPIDMQ_DATA_PORT_BASE:-9760}
+      CUPIDMQ_PROCESS_MS_MIN: ${CUPIDMQ_PROCESS_MS_MIN:-2}
+      CUPIDMQ_PROCESS_MS_MAX: ${CUPIDMQ_PROCESS_MS_MAX:-16}
+      CUPIDMQ_ALLOC_DIR: /var/lib/cupidmq
+      CUPIDMQ_CONSUMER_BIN: /app/run-python-consumer.sh
+      CUPIDMQ_CONSUMER_TAG_PREFIX: py
+    volumes:
+      - cupidmq-port-alloc:/var/lib/cupidmq
+
+volumes:
+  cupidmq-port-alloc:

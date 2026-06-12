@@ -1,0 +1,353 @@
+---
+description: CupidMQ — brokerless P2P batch queue; matchmaker TCP + BATC data plane
+globs: "**/*"
+alwaysApply: false
+---
+
+# CupidMQ — mapa derivado do código
+
+**Tagline:** The brokerless P2P message queue where the master only plays matchmaker.
+
+**Status:** experimental. **Pull matchmaker** + **data plane P2P** (TCP BATC). Modelo: **1 canal control** (master) + **entrega direta producer→consumer** com ACK.
+
+**Repo:** standalone `cupidmq/` · branch **`main`** · `https://github.com/tecnomarra/cupidmq`
+
+**Consumo externo** (sem clone): ver [README#use-in-your-project](README.md#use-in-your-project) · [RELEASING.md](RELEASING.md)
+
+| Peça | Fonte | Pin |
+|------|--------|-----|
+| Master binário | GitHub **Release** | asset `cupidmq` |
+| Master Docker | **git** | `#main` / `#v0.1.0` |
+| Crate Rust | **git** | `tag`/`branch`/`rev` + `path=master` |
+| Python | **git** ou **Release wheel** | `@main` / `@v0.1.0` / `.whl` URL |
+
+| Path | Papel |
+|------|--------|
+| **`master/`** | Crate Rust — master (matchmaker) + lib producer |
+| **`dashboard/`** | SPA Vite — métricas `:9752` |
+| **`python-client/cupidmq/`** | Lib Python — `CupidMQ` transporte (bytes) |
+| **`python-client/harness/`** | Harness dev — stress CLI, payloads sintéticos |
+| **`test-environments/`** | Presets JSON (producers/consumers) |
+| **`scripts/stress-tcp.ps1`** | Stress 16p×20c TCP keep-alive |
+---
+
+## Regra agente — reiniciar após editar
+
+**Sempre que alterar código de um componente do stack, verificar se esse processo está rodando e reiniciá-lo antes de encerrar a task.**
+
+| Mexeu em… | Paths típicos | Processo | Como reiniciar |
+|-----------|---------------|----------|----------------|
+| **Master** | `master/src/**` | `cupidmq.exe` :9750–9752 | `cargo build --release` → matar → subir com `cupidmq.conf` |
+| **Producer** | `master/src/producer/**`, `master/examples/cupidmq-producer.rs` | `cupidmq-producer.exe` | rebuild example → matar → subir de novo |
+| **Consumer lib** | `python-client/cupidmq/**` | — | rebuild não precisa restart se só lib |
+| **Consumer harness** | `python-client/harness/**` | `uv run python -m harness.consumer_cli` | matar python/uv → subir |
+| **Dashboard** | `dashboard/src/**` | Vite `:5175` | matar porta → `npm run dev` |
+
+**Restart parcial comum:** só consumers (testar `max-batch-size-count`) — matar python/uv consumer, **não** matar master/producers. Após restart master sozinho, producers reconectam com novos IDs.
+
+**Windows — inspeção rápida:**
+
+```powershell
+Get-Process cupidmq, cupidmq-producer -ErrorAction SilentlyContinue
+Invoke-RestMethod http://127.0.0.1:9752/metrics | Select-Object producers_connected, consumers_connected, producers_busy, delivery_failures_total
+Stop-Process -Name cupidmq, cupidmq-producer -Force -ErrorAction SilentlyContinue
+```
+
+**Makefile:** `make run` | `make producer-run` | `make consumer-run` | `make test-rust` | `make test-python` | `make dashboard` | `make publish`.
+
+---
+
+## Arquitetura — control plane + data plane P2P
+
+```
+Producer(s)                         cupidmq master                    Consumer(s)
+  │  TCP :9750 control                  │                                   │  TCP :9750 control
+  │  PRDY / HBRP / DELV / FAIL          │  Matchmaker                       │  REG! → data addr
+  │  ← ASGN                             │  ProducerRegistry                 │  CRDY
+  │                                     │  ConsumerRegistry                 │
+  │  TCP :976x data (P2P) ──────────────┼──────────────────────────────────►│  listener BATC
+  │  BATC (keep-alive pool)             │  (payload NÃO passa pelo master)  │  fetch ∥ process
+  └─────────────────────────────────────┴───────────────────────────────────┘
+                                        │  HTTP :9752 /metrics
+                                        ▼
+                                 cupidmq-dashboard
+```
+
+**Master não transporta payload.** Só orquestra match + métricas. Sem persistência. Falha BATC → producer **requeue** local + `FAIL` ao master.
+
+Inner batch wire format: `[count u16 LE][len u32 LE][item]…` — o master não interpreta o conteúdo dos items.
+
+---
+
+## Ciclo de match (pull)
+
+1. Producer ring local tem itens → **`PRDY`** ao master
+2. Consumer **`CRDY`** (max_items + tag) → abre janela BATC após TCP ack do envio
+3. Matchmaker: fila CRDY (RR consumer) × pool PRDY (ranking backlog producer)
+4. Master **`ASGN`** → producer (`data_addr`, max_items, tag)
+5. Producer entrega **`BATC`** direto no TCP data do consumer → **`DELV`** após flush OK
+6. Falha I/O TCP → requeue local + **`FAIL`** ao master → próximo match
+
+**Ordem crítica CRDY:** consumer seta `accept_batch=True` após `CRDY` enviado (drain); master enfileira CRDY e chama `try_match` sem reply no control plane.
+
+---
+
+## Processos e portas (defaults)
+
+| Listen (bind) | Connect (exemplo) | Handler | Protocolo |
+|------|------|---------|-----------|
+| **`0.0.0.0:9750`** | `127.0.0.1:9750` | `handle_control` | Control: producers `PRDY`/`HBRP`/`DELV`/`FAIL` + consumers `REG!`/`CRDY`; demux 1º magic |
+| **`0.0.0.0:9752`** | `127.0.0.1:9752` | Axum | JSON `/metrics`, `/metrics/ticks`, `/metrics/history` |
+| **`0.0.0.0:9760+`** | `127.0.0.1:9760+` (REG!) | consumer | Data: `BATC` |
+
+Config: `cupidmq.conf` (`host`, `control_port`, `metrics_port`) → env `CUPIDMQ_HOST`, `CUPIDMQ_CONTROL_PORT`, `CUPIDMQ_METRICS_PORT` → CLI. Precedência: **CLI > env > file > default**.
+
+---
+
+## Wire protocol (`src/protocol.rs`)
+
+| Magic | Direção | Uso |
+|-------|---------|-----|
+| **`PRDY`** | Producer → master | Producer ready — ring local tem itens, pede match |
+| **`HBRP`** | Producer → master | Heartbeat backlog (pending + ring + drops) |
+| **`ASGN`** | Master → producer | Destino data `host:port`, max_items, tag |
+| **`DELV`** | Producer → master | BATC entregue (msg_count, batch_bytes) |
+| **`FAIL`** | Producer → master | Entrega falhou; itens requeued no producer |
+| **`REG!`** | Consumer → master | Registra endpoint data TCP `host:port` |
+| **`CRDY`** | Consumer → master | Consumer ready — pull batch (max_items + consumer_tag) |
+| **`BATC`** | Producer → consumer | Batch wire frame |
+| **`ERR!`** | Master → client (control) | Erro de protocolo no canal `:9750` |
+
+Limites: item ≤ **32 MiB**; frame batch ≤ **64 MiB**. BATC usa `write_vectored`; flush extra se &lt; **64 KiB** (`FLUSH_BELOW_BYTES`).
+
+---
+
+## Producer lib (`src/producer/`)
+
+API: `Producer::connect`, `publish`, `publish_batch`.
+
+Pipeline: `pending` ByteRing → `BatchAccumulator` → `ring` ByteRing → control TCP + **data TCP P2P**.
+
+| Constante | Default |
+|-----------|---------|
+| `DEFAULT_OUTBOUND_MAX_BYTES` | 4 GiB |
+| `DEFAULT_MAX_BATCH_BYTES` | 64 MiB |
+| `DEFAULT_FLUSH_TIMEOUT_MS` | 100 ms (accumulator) |
+| `DEFAULT_DELIVERY_TIMEOUT_SECS` | 8 s (connect+BATC+ACK) |
+| `DEFAULT_DELIVERY_IDLE_SECS` | 60 s (pool keep-alive) |
+| `DEFAULT_RECONNECT_DELAY_SECS` | 2 s |
+
+### Delivery pool (`delivery_pool.rs`)
+
+- **1 TCP viva por `host:port`** — mesmo papel que connection pool HTTP (reqwest/hyper)
+- Sucesso BATC → `put` no pool; erro I/O → `invalidate` + retry 1× connect novo
+- Idle **60s** → evict conexão do pool
+
+**Regra crítica:** estado writer em **`std::sync::Mutex`**, não `tokio::sync::Mutex`.
+
+Harness: `cargo run --release --example cupidmq-producer -- --batch-mode --rate-min 512 --publish-mult 8`.
+
+---
+
+## Matchmaker + recovery (`src/producers.rs`)
+
+- **`ready_producers`**: pool RR; ranking por backlog (msgs, bytes)
+- **`waiting`**: fila CRDY consumer
+- **`sync_ready_pool`**: idle+backlog → promote Ready + re-insere pool
+- **Stale busy** (`STALE_BUSY_MS=15s`): HBRP/PRDY com master `Busy` sem DELV/FAIL → clear + rematch
+- **Idle + backlog**: HBRP com ring cheio mas state Idle (PRDY perdido) → promote Ready
+- **Consumer disconnect**: `clear_assignments_to_consumer` libera producers presos
+
+Loop auxiliar: `run_match_loop` 250ms quando `waiting_count > 0`.
+
+---
+
+## Consumer harness Python (`python-client/`)
+
+Dois sockets:
+
+| Socket | Papel |
+|--------|--------|
+| **:9750** | REG!, CRDY, PRDY, HBRP, ASGN, DELV, FAIL (control) |
+| **:976x** | Listener BATC keep-alive (`serve_batch_on_connection`) |
+
+- **fetch/process** desacoplados (`prefetch_batch_count`)
+- **`accept_batch`**: janela por ciclo CRDY; fora da janela → drop silencioso + `stale_batches`
+- **`batch_timeout_secs`**: default 10s; stress usa **12s** (&gt; producer delivery 8s)
+- **`data_idle_secs`**: default **60s** — fecha TCP data se sem BATC (keep-alive idle)
+- Chaos reconnect opcional
+
+---
+
+## Ring (`src/ring/`)
+
+Usado no **producer local** (`ByteRing`, `BatchAccumulator`). Cap → **drop oldest**. **`SharedRing`** existe na lib mas **master atual não usa ring central** — backlog agregado vem dos heartbeats dos producers (`producer_backlog_*` em metrics).
+
+---
+
+## Métricas HTTP
+
+| Rota | Conteúdo |
+|------|----------|
+| **`GET /health`** | `ok` |
+| **`GET /metrics`** | `MetricsSnapshot` — producers, consumers, rates, backlog |
+| **`GET /metrics/ticks`** | Drain transfer ticks (assign/deliver/fail + `fail_message`) |
+| **`GET /metrics/history?minutes=N`** | série amostrada (default interval 2s) |
+
+Campos-chave: `transfers_total`, `batches_total`, `delivery_failures_total` (**BATC FAIL**), `producer_backlog_*`, `producers_ready/busy`, `consumers_waiting`, `consumer_inflight`.
+
+Dashboard: **http://127.0.0.1:5175** — poll 2s; labels consumer `await BATC`, `BATC failed` (`consumerStateDisplay.ts`).
+
+---
+
+## Módulos — onde alterar
+
+| Mudança | Arquivo |
+|---------|---------|
+| Framing / magic | `src/protocol.rs` |
+| Master loops, DELV/FAIL/HBRP | `src/server.rs` |
+| Matchmaker, stale busy | `src/producers.rs` |
+| Consumer registry / capacity | `src/consumers.rs`, `src/capacity.rs` |
+| Transfer ticks | `src/tick_buffer.rs`, `src/metrics.rs` |
+| Producer client + pool | `src/producer/client.rs`, `delivery_pool.rs`, `accumulator.rs` |
+| Config | `src/config.rs` |
+| UI | `../dashboard/src/` |
+| Harness consumer | `../python-client/` |
+
+---
+
+## Ferramental dev
+
+### Stress TCP — `scripts/stress-tcp.ps1`
+
+Preset **`test-environments/presets/stress-16p-20c-tcp-mult8.json`**:
+
+| Parâmetro | Valor |
+|-----------|--------|
+| Producers | 16 × 512/s × mult 8, 8 KiB payload sintético, batch flush 100ms |
+| Consumers | 20 × max-batch-size-count 128, data :9760–9779, keep-alive 60s |
+| Producer pool idle | 60s (`--delivery-idle-secs`) |
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/stress-tcp.ps1
+# metrics: http://127.0.0.1:9752/metrics
+# dashboard: http://127.0.0.1:5175
+```
+
+### `cupidmq-producer` — flags principais
+
+| Flag / env | Default | Uso |
+|------------|---------|-----|
+| `--master` / `CUPIDMQ_MASTER` | `127.0.0.1:9750` | TCP control |
+| `--batch-mode` | off | `publish_batch` + accumulator |
+| `--flush-timeout-ms` | 100 | `flush_timeout_ms` — accumulator |
+| `--max-batch-size-mb` | 64 | → `max_batch_bytes` |
+| `--outbound-max-mb` | 4096 | → `outbound_max_bytes` |
+| `--delivery-timeout-secs` | 8 | timeout BATC+ACK |
+| `--delivery-idle-secs` / `CUPIDMQ_DELIVERY_IDLE_SECS` | 60 | pool keep-alive |
+| `--reconnect-delay-secs` | 2 | backoff master TCP |
+
+### ProducerConfig / `CupidMQ.producer` (nomes alinhados)
+
+| Campo | Tipo | Default |
+|-------|------|---------|
+| `master` | `host:port` | `127.0.0.1:9750` |
+| `max_batch_bytes` | bytes | 64 MiB |
+| `flush_timeout_ms` | ms | 100 |
+| `outbound_max_bytes` | bytes | 4 GiB |
+| `reconnect_delay_secs` | s | 2 |
+| `delivery_timeout_secs` | s | 8 |
+| `delivery_idle_secs` | s | 60 |
+| `heartbeat_interval_ms` | ms | 2000 |
+
+### ConsumerConfig / `CupidMQ.consumer` (nomes alinhados)
+
+| Campo | Tipo | Default |
+|-------|------|---------|
+| `master` | `host:port` | `127.0.0.1:9750` |
+| `data_addr` | `host:port` | `127.0.0.1:9760` |
+| `bind_addr` | `host:port` | `0.0.0.0:<porta data_addr>` |
+| `consumer_tag` | str | `""` |
+| `max_batch_size_count` | u16/int | 32 |
+| `prefetch_batch_count` | usize/int | 4 |
+| `batch_timeout_secs` | s | 10 |
+| `data_idle_secs` | s | 60 |
+| `reconnect` | bool | true |
+| `reconnect_delay_secs` | s | 2 |
+
+### Consumer — endereços (Rust + Python)
+
+| Campo / env | Default | Uso |
+|-------------|---------|-----|
+| `data_addr` / `CUPIDMQ_DATA_ADDR` | `127.0.0.1:9760` | Anunciado no `REG!` — producer conecta BATC aqui |
+| `bind_addr` / `CUPIDMQ_BIND_ADDR` | `0.0.0.0:<porta>` | Listen local (porta de `data_addr` se omitido) |
+
+### Consumer Python harness — flags principais
+
+| Flag / env | Default | Uso |
+|------------|---------|-----|
+| `CUPIDMQ_MASTER` | `127.0.0.1:9750` | TCP control (connect) |
+| `--data-addr` / `CUPIDMQ_DATA_HOST`+`PORT` | `127.0.0.1:9760` | advertise REG! |
+| `--bind-addr` / `CUPIDMQ_BIND_ADDR` | `0.0.0.0:9760` | listen BATC |
+| `--max-batch-size-count` | 32 | max_items no CRDY |
+| `--batch-timeout-secs` | 10 | wait BATC após CRDY (**&gt; delivery-timeout**) |
+| `--data-idle-secs` / `CUPIDMQ_DATA_IDLE_SECS` | 60 | keep-alive data TCP |
+| `--prefetch-batch-count` | 4 | prefetch batches |
+| `--no-simulate-process-ms` | — | load test (sem sleep) |
+
+### Makefile
+
+| Target | Ação |
+|--------|------|
+| `make build` | build release + cupidmq-producer example |
+| `make run` | daemon master |
+| `make sim` | `sim-load.ps1` |
+| `make dashboard` | Vite :5175 |
+| `make publish` | binários → `dist/` |
+
+### Testes
+
+```bash
+make test-rust    # cargo test em master/
+make test-python  # uv sync + unittest em python-client/
+```
+
+---
+
+## Roteiros validados (2026-06)
+
+| Cenário | Setup | Observar |
+|---------|-------|----------|
+| **Stress 16p×20c TCP** | `stress-tcp.ps1` | ~300–400 batch/s, `delivery_failures_total=0` com pool keep-alive |
+| **Batch-max sweep** | restart só consumers: 1 / 16 / 128 / 512 | capacity %, batches/s |
+| **Consumer restart** | matar/subir consumers | busy stale ~15s → auto-clear; pipeline retoma |
+| **Producer ring cap** | 1 producer lento | idle+backlog → promote Ready via HBRP |
+
+---
+
+## Armadilhas (não regressar)
+
+1. **Entrega data plane = TCP** — BATC + flush; requeue só em falha I/O; **`DELV`/`FAIL`** no control plane.
+2. **`batch_timeout` consumer &gt; `delivery_timeout` producer** — senão consumer abandona ciclo cedo.
+3. **Keep-alive bilateral** — pool producer + loop BATC consumer; não fechar TCP após 1 batch.
+4. **Matcher só usa producers `Ready` no pool** — idle+backlog precisa promote (HBRP/sync_ready_pool).
+5. **`PRDY while busy`** — era no-op; agora clear stale. Não reintroduzir ignore silencioso.
+6. **Restart só master** — producers reconectam; consumers data ports ficam; partial restart desincroniza IDs.
+7. **Windows `uv run`** — 2 processos python por consumer (parent+child); normal.
+8. **`std::sync::Mutex`** no producer writer — nunca `blocking_lock` Tokio mutex no async path.
+9. **Inner batch format** — alterar exige alinhar producer, consumer e qualquer harness que gera batches.
+
+---
+
+## Comandos atalho
+
+```bash
+cd master && cargo run --release -- --config cupidmq.conf
+cd dashboard && npm run dev
+powershell -ExecutionPolicy Bypass -File scripts/stress-tcp.ps1
+```
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:9752/metrics | ConvertTo-Json -Depth 4
+Invoke-RestMethod http://127.0.0.1:9752/metrics/ticks
+```

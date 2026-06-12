@@ -1,0 +1,8 @@
+**/target
+**/node_modules
+client/
+test-environments/
+scripts/
+*.md
+.git
+.cursor

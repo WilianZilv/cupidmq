@@ -1,0 +1,103 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Tag matches Cargo.toml and pyproject.toml
+        run: bash scripts/check-release-version.sh "${{ github.ref_name }}"
+
+  build:
+    needs: validate
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            ext: ""
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            ext: ".exe"
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Build release binaries
+        working-directory: master
+        run: |
+          cargo build --release --target ${{ matrix.target }}
+          cargo build --release --target ${{ matrix.target }} --example cupidmq-producer
+
+      - name: Stage artifacts
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp "master/target/${{ matrix.target }}/release/cupidmq${{ matrix.ext }}" dist/cupidmq${{ matrix.ext }}
+          cp "master/target/${{ matrix.target }}/release/examples/cupidmq-producer${{ matrix.ext }}" dist/cupidmq-producer${{ matrix.ext }}
+          cp master/cupidmq.conf.example dist/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cupidmq-${{ matrix.target }}
+          path: dist/*
+
+  packages:
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: cargo package (Rust crate tarball)
+        working-directory: master
+        run: cargo package
+
+      - name: uv build (Python wheel + sdist)
+        working-directory: python-client
+        run: uv build
+        env:
+          UV_PYTHON: "3.11"
+
+      - name: Stage library artifacts
+        run: |
+          mkdir -p dist-packages
+          cp master/target/package/cupidmq-*.crate dist-packages/
+          cp python-client/dist/* dist-packages/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cupidmq-packages
+          path: dist-packages/*
+
+  release:
+    needs: [build, packages]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: cupidmq-*
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: artifacts/*
+

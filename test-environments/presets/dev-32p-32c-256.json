@@ -1,0 +1,27 @@
+{
+  "id": "dev-32p-32c-256",
+  "name": "32p @256/s 8KB · 1MB ring · 32c batch32 · 0ms process",
+  "producers": {
+    "count": 32,
+    "rate_min": 256,
+    "rate_max": 256,
+    "payload_bytes_min": 8192,
+    "payload_bytes_max": 8192,
+    "batch_mode": true,
+    "flush_timeout_ms": 100,
+    "outbound_max_mb": 1,
+    "publish_mult": 4,
+    "reconnect_delay_secs": 2,
+    "duration_secs": 3600
+  },
+  "consumers": {
+    "count": 32,
+    "max_batch_size_count": 32,
+    "simulate_process_ms": false,
+    "prefetch_batch_count": 4,
+    "batch_timeout_secs": 12,
+    "data_idle_secs": 60,
+    "reconnect_delay_secs": 2,
+    "log_every": 25
+  }
+}

@@ -1,0 +1,14 @@
+# CupidMQ master — matchmaker (control plane TCP único; BATC vai producer→consumer direto)
+
+# Bind/listen — control + metrics HTTP (0.0.0.0 = all interfaces)
+host=0.0.0.0
+control_port=9750
+metrics_port=9752
+
+# Optional — Vite `dist/` directory (Docker sets /app/dashboard)
+# dashboard_dir=/app/dashboard
+
+# BATC (data plane) NÃO fica no master — cada consumer abre :9760+ local e informa no REG!
+
+history_interval_ms=2000
+history_cap=1800

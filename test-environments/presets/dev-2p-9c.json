@@ -1,0 +1,27 @@
+{
+  "id": "dev-2p-9c",
+  "name": "Dev 2 producers × 9 consumers (300–600KB payload, 8–50ms/item)",
+  "producers": {
+    "count": 2,
+    "rate_min": 120,
+    "rate_max": 180,
+    "payload_bytes_min": 307200,
+    "payload_bytes_max": 614400,
+    "batch_mode": true,
+    "flush_timeout_ms": 100,
+    "reconnect_delay_secs": 2,
+    "duration_secs": 3600
+  },
+  "consumers": {
+    "count": 9,
+    "max_batch_size_count": 32,
+    "simulate_process_ms": true,
+    "process_ms_min": 8,
+    "process_ms_max": 50,
+    "prefetch_batch_count": 4,
+    "batch_timeout_secs": 12,
+    "data_idle_secs": 60,
+    "reconnect_delay_secs": 2,
+    "log_every": 25
+  }
+}

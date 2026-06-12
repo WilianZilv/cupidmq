@@ -1,0 +1,19 @@
+# Producer + docker-consumer for Compose scale tests.
+
+FROM rust:1-bookworm AS build
+WORKDIR /build
+COPY master/ ./master/
+RUN cargo build --release --manifest-path master/Cargo.toml \
+    --example cupidmq-producer \
+    --example docker-consumer
+
+FROM debian:bookworm-slim AS runtime
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates util-linux \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY --from=build /build/master/target/release/examples/cupidmq-producer /usr/local/bin/cupidmq-producer
+COPY --from=build /build/master/target/release/examples/docker-consumer /usr/local/bin/docker-consumer
+COPY docker/entrypoint-consumer.sh /app/entrypoint-consumer.sh
+RUN sed -i 's/\r$//' /app/entrypoint-consumer.sh && chmod +x /app/entrypoint-consumer.sh
+# entrypoint selects binary via CUPIDMQ_CONSUMER_BIN (default: docker-consumer)

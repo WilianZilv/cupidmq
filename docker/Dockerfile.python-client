@@ -1,0 +1,14 @@
+# Python CupidMQ consumer for Compose (docker_consumer.py).
+
+FROM python:3.12-slim AS runtime
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends util-linux \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY python-client/ ./python-client/
+COPY docker/entrypoint-consumer.sh /app/entrypoint-consumer.sh
+COPY docker/run-python-consumer.sh /app/run-python-consumer.sh
+RUN sed -i 's/\r$//' /app/entrypoint-consumer.sh /app/run-python-consumer.sh \
+    && chmod +x /app/entrypoint-consumer.sh /app/run-python-consumer.sh
+ENV PYTHONPATH=/app/python-client
+CMD ["/app/entrypoint-consumer.sh"]

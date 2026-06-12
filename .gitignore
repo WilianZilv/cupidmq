@@ -1,0 +1,12 @@
+target/
+node_modules/
+dist/
+.env
+test-environments/integration/.env
+__pycache__/
+*.pyc
+.venv/
+/.python-version
+dashboard/dist/
+master/cupidmq.conf
+*.log

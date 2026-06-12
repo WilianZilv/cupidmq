@@ -1,0 +1,19 @@
+[project]
+name = "cupidmq-client"
+version = "0.1.0"
+description = "CupidMQ Python client — brokerless P2P batch queue"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.urls]
+Repository = "https://github.com/tecnomarra/cupidmq"
+
+[project.scripts]
+cupidmq-consumer = "harness.consumer_cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["cupidmq", "harness"]
